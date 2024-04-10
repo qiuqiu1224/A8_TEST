@@ -12,10 +12,11 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Sunny.UI;
 
 namespace A8_TEST
 {
-    public partial class FormMain : Form
+    public partial class FormMain : UIForm
     {
         tstRtmp rtmp = new tstRtmp();
         Rtsplz rtsplz = new Rtsplz();
@@ -25,14 +26,26 @@ namespace A8_TEST
 
         List<string> ipLists = new List<string>();
         List<A8SDK> a8Lists = new List<A8SDK>();
-        //Thread thPreview;
-        //VideoCapture videoCapture = new VideoCapture();
-
-        //Mat IRframe = new Mat();
-        //Mat IRmgMatShow = new Mat();
-        //private Bitmap IRProspectImage;
         private bool saveVideoFlag = false;
 
+        const uint DISPLAYWND_GAP = 1;//监控画面的间隙
+        const uint DISPLAYWND_MARGIN_LEFT = 1;//监控画面距离左边控件的距离
+        const uint DISPLAYWND_MARGIN_TOP = 1; //监控画面距离上边的距离
+        const int PAGE_INDEX = 1000;
+
+        Color PIC_CLICKED_COLOR = Color.FromArgb(128, 128, 255);
+        Color PIC_UNCLICKED_COLOR = Color.FromArgb(45, 45, 53);
+
+        private PictureBox[] pics;//显示图像控件
+                                  // private UIPanel pixUIPanel;//容纳PictureBox的Panel
+        //public static TransparentLabel[] labels;//图像上面标注控件,背景透明
+
+        private UIPage fmonitor;//监控界面
+        A8SDK.globa_temp globa_Temp;
+
+        List<List<Bitmap>> imageList = new List<List<Bitmap>>();
+
+        [Obsolete]
         public FormMain()
         {
 
@@ -55,8 +68,156 @@ namespace A8_TEST
                 }
             }
 
-            Console.WriteLine("");
+            int pageIndex = PAGE_INDEX;
 
+            //设置关联
+            uiNavBar1.TabControl = uiTabControl1;
+
+            //uiNavBar1设置节点，也可以在Nodes属性里配置
+            uiNavBar1.Nodes.Add("红外监控");
+            uiNavBar1.SetNodeSymbol(uiNavBar1.Nodes[0], 61501);//设置图标
+
+            //添加实时监控界面
+            fmonitor = new FMonitor();
+            AddPage(fmonitor, pageIndex);
+            uiNavBar1.SetNodePageIndex(uiNavBar1.Nodes[0], pageIndex);//设置显示的初始界面为实时监控界面
+
+            uiNavBar1.Nodes.Add("图像浏览");
+            uiNavBar1.SetNodeSymbol(uiNavBar1.Nodes[1], 61502);
+
+            uiNavBar1.Nodes.Add("系统设置");
+            uiNavBar1.SetNodeSymbol(uiNavBar1.Nodes[2], 61459);
+
+            //设置默认显示界面
+            uiNavBar1.SelectedIndex = 0;
+
+            initDatas();
+
+            SetFmonitorDisplayWnds(1, 1);
+
+            thPlayer = new Thread(DeCoding);
+            thPlayer.IsBackground = true;
+            thPlayer.Start();
+
+
+        }
+
+        private void initDatas()
+        {
+          
+            pics = new PictureBox[2 * 2];//定义显示图像控件，每个设备显示可见光和红外图像。
+
+        }
+
+
+        /// <summary>
+        /// 设置实时监控界面相关控件大小及显示位置
+        /// </summary>
+        /// <param name="rowNum">行数</param>
+        /// <param name="colNum">列数</param>
+
+        private void SetFmonitorDisplayWnds(uint rowNum, uint colNum)
+        {
+            //uint w = (uint)(Screen.PrimaryScreen.Bounds.Width - fmonitor.GetControl("uiPanel1").Width);
+            uint w = (uint)(Screen.PrimaryScreen.Bounds.Width - fmonitor.GetControl("uiNavMenu1").Width);
+            uint h = (uint)(Screen.PrimaryScreen.Bounds.Height - uiNavBar1.Height - fmonitor.GetControl("uiPanel1").Height);
+
+
+            //先计算显示窗口的位置和大小，依据为：在不超过主窗口大小的情况下尽可能大，同时严格保持4:3的比例显示
+            uint real_width = w;
+            uint real_height = h;
+
+            uint display_width = (real_width - DISPLAYWND_MARGIN_LEFT * 2 - (colNum - 1) * DISPLAYWND_GAP) / colNum;//单个相机显示区域的宽度(还未考虑比例)
+            uint display_height = (real_height - DISPLAYWND_MARGIN_TOP * 2 - (rowNum - 1) * DISPLAYWND_GAP) / rowNum;//单个相机显示区域的高度(还未考虑比例)
+
+            if (display_width * 3 >= display_height * 4)//考虑比例
+            {
+                uint ret = display_height % 3;
+                if (ret != 0)
+                {
+                    display_height -= ret;
+                }
+                display_width = display_height * 4 / 3;
+            }
+            else
+            {
+                uint ret = display_width % 4;
+                if (ret != 0)
+                {
+                    display_width -= ret;
+                }
+                display_height = display_width * 3 / 4;
+            }
+
+
+
+            for (uint i = 0; i < rowNum; i++)
+            {
+                uint y = (uint)fmonitor.GetControl("uiPanel1").Height + (real_height - rowNum * display_height - DISPLAYWND_GAP * (rowNum - 1)) / 2 + (display_height + DISPLAYWND_GAP) * i;
+                for (uint j = 0; j < colNum; j++)
+                {
+                    uint x = (uint)fmonitor.GetControl("uiNavMenu1").Width + (real_width - colNum * display_width - DISPLAYWND_GAP * (colNum - 1)) / 2 + (display_width + DISPLAYWND_GAP) * j;
+
+                    pics[i * 2 + j] = new PictureBox();
+                    pics[i * 2 + j].Left = (int)x;
+                    pics[i * 2 + j].Top = (int)y;
+                    pics[i * 2 + j].Width = (int)display_width;
+                    pics[i * 2 + j].Height = (int)display_height;
+                    pics[i * 2 + j].Show();
+                    pics[i * 2 + j].BackColor = Color.FromArgb(45, 45, 53);
+                    //pics[i * 2 + j].Image = Image.FromFile(@"D:\C#\IRAY_Test\IR_Tmp_Measurement\bin\Debug\AlarmImage\20230330105027_Visual.jpg");
+                    //pics[i * 2 + j].Name = "pic" + (i * 2 + j).ToString();
+                    pics[i * 2 + j].SizeMode = PictureBoxSizeMode.StretchImage;
+                   
+
+                    fmonitor.Controls.Add(pics[i * 2 + j]);
+
+                    //labels[i * 2 + j] = new TransparentLabel();
+                    //labels[i * 2 + j].Left = (int)x;
+                    //labels[i * 2 + j].Top = (int)y;
+                    ////labels[i * 2 + j].Text = "轴" + (i * 2 + j + 1).ToString();
+                    //labels[i * 2 + j].ForeColor = Color.WhiteSmoke;
+                    //labels[i * 2 + j].BackColor = Color.Transparent;
+                    //// label.Show();
+
+                    //fmonitor.Controls.Add(labels[i * 2 + j]);
+                    ////pic[i * 2 + j].Controls.Add(label);
+                    ////label.Parent = fmonitor;
+                    //labels[i * 2 + j].BringToFront();
+
+                    //switch (i * 2 + j)
+                    //{
+                    //    case 0:
+                    //        pics[i * 2 + j].Tag = 0;
+                    //        pics[i * 2 + j].Paint += new PaintEventHandler(Pics0_Paint);
+                    //        pics[i * 2 + j].Click += new EventHandler(Pics0_Click);
+                    //        break;
+                    //    case 1:
+                    //        pics[i * 2 + j].Tag = 0;
+                    //        pics[i * 2 + j].Paint += new PaintEventHandler(Pics1_Paint);
+                    //        pics[i * 2 + j].Click += new EventHandler(Pics1_Click);
+                    //        break;
+                    //    case 2:
+                    //        pics[i * 2 + j].Tag = 0;
+                    //        pics[i * 2 + j].Paint += new PaintEventHandler(Pics2_Paint);
+                    //        pics[i * 2 + j].Click += new EventHandler(Pics2_Click);
+                    //        break;
+                    //    case 3:
+                    //        pics[i * 2 + j].Tag = 0;
+                    //        pics[i * 2 + j].Paint += new PaintEventHandler(Pics3_Paint);
+                    //        pics[i * 2 + j].Click += new EventHandler(Pics3_Click);
+                    //        break;
+
+                    //}
+
+                }
+
+            }
+
+            //foreach (PictureBox p in fmonitor.GetControls<PictureBox>())
+            //{
+            //    Console.WriteLine(p.Name);
+            //}
         }
 
         /// <summary>
@@ -159,235 +320,6 @@ namespace A8_TEST
 
         CancellationTokenSource cts = new CancellationTokenSource();
         private VideoWriter VideoWriter;
-        //private void SaveVideoThread()
-        //{
-
-           
-        //    string videoStreamAddress = "rtsp://192.168.100.2/webcam";
-        //    videoCapture.Open(videoStreamAddress);
-
-        //    VideoWriter writer = new VideoWriter("output_video.avi", FourCC.XVID, videoCapture.Fps, new OpenCvSharp.Size(videoCapture.FrameWidth, videoCapture.FrameHeight), true);
-        //    Console.WriteLine(writer.IsOpened());
-
-        //    if (videoCapture.IsOpened())
-        //    {
-                
-        //        int time = Convert.ToInt32(Math.Round(1000/videoCapture.Fps));
-        //        while (true)
-        //        {
-        //            Thread.Sleep(time);
-        //            if (cts.Token.IsCancellationRequested)
-        //            {
-        //                IRframe = null;
-        //                return;
-        //            }
-        //            videoCapture.Read(IRframe);
-
-        //            if (IRframe.Empty())
-        //            {
-        //                continue;
-        //            }
-
-        //            if (saveVideoFlag)
-        //            {
-                       
-        //                writer.Write(IRframe);
-        //            }
-        //        }
-        //    }
-
-        //    ////Thread.Sleep(100);
-        //    //while (true)
-        //    //{
-        //    //    if (videoCapture.IsOpened())
-        //    //    {
-        //    //        break;
-        //    //    }
-        //    //    else
-        //    //    {
-        //    //        Console.WriteLine("打开红外失败");
-        //    //        videoCapture.Open(videoStreamAddress);
-        //    //    }
-
-        //    //    Thread.Sleep(100);
-        //    //}
-
-        //    //while (videoCapture.IsOpened())
-        //    //{
-        //    //    bool read_visual_success = videoCapture.Read(IRframe);
-        //    //    if (read_visual_success)
-        //    //    {
-        //    //        //Console.WriteLine("红外" + IRframe.Empty());
-        //    //        if (IRframe.Height == 0)
-        //    //        {
-
-        //    //            videoCapture.Open(videoStreamAddress);
-        //    //            continue;
-        //    //        }
-
-        //    //        //OpenCvSharp.Size size = new OpenCvSharp.Size(pic.Width, pic.Height);
-        //    //        //Cv2.Resize(IRframe, IRmgMatShow, size, 0, 0, InterpolationFlags.Cubic);
-
-        //    //        VideoWriter writer = new VideoWriter("output_video.avi", FourCC.XVID, 20.0, new OpenCvSharp.Size(IRframe.Width, IRframe.Height), true);
-
-
-        //    //        // 读取视频帧并写入到输出视频中
-
-
-        //    //        // 写入帧到输出视频
-        //    //        writer.Write(IRframe);
-        //    //    }
-
-
-
-        //    //}
-
-        //}
-
-        //public void ShowIRImageThreadProc()
-        //{
-        //    string videoStreamAddress = "rtsp://192.168.100.2/webcam";
-        //    videoCapture.Open(videoStreamAddress);
-        //    //Thread.Sleep(100);
-        //    while (true)
-        //    {
-        //        if (videoCapture.IsOpened())
-        //        {
-        //            break;
-        //        }
-        //        else
-        //        {
-        //            Console.WriteLine("打开红外失败");
-        //            videoCapture.Open(videoStreamAddress);
-        //        }
-
-        //        Thread.Sleep(100);
-        //    }
-        //    int i = 0;
-        //    while (videoCapture.IsOpened())
-        //    {
-        //        bool read_visual_success = videoCapture.Read(IRframe);
-        //        if (read_visual_success)
-        //        {
-        //            //Console.WriteLine("红外" + IRframe.Empty());
-        //            if (IRframe.Height == 0)
-        //            {
-
-        //                videoCapture.Open(videoStreamAddress);
-        //                continue;
-        //            }
-
-        //            OpenCvSharp.Size size = new OpenCvSharp.Size(pic.Width, pic.Height);
-        //            Cv2.Resize(IRframe, IRmgMatShow, size, 0, 0, InterpolationFlags.Cubic);
-
-        //            IRProspectImage = (Bitmap)IRmgMatShow.ToBitmap().Clone();
-
-        //            //if (i >= 100)
-        //            //{
-        //            //    byte[] bytes = readBitmapToBytes(VisualProspectImages[(int)deviceNum]);
-
-        //            //    dataArrayList[(int)deviceNum].AddLast(bytes);
-        //            //    if (dataArrayList[(int)deviceNum].Count >= 3)
-        //            //    {
-        //            //        dataArrayList[(int)deviceNum].RemoveFirst();
-        //            //    }
-        //            //    //VisualProspectImageCpoy = VisualProspectImage;
-        //            //    i = 0;
-        //            //}
-
-
-        //            OpenCvSharp.Point cor;
-        //            OpenCvSharp.Point corEnd;
-
-        //            // Console.WriteLine("picturboxType" + picturboxType);
-        //            //if (bIfGetEnd == true && picturboxType == 1 && (int)deviceNum == 0) //正在画矩形
-        //            //{
-        //            //    cor.X = iNowPaint_X_Start;
-        //            //    cor.Y = iNowPaint_Y_Start;
-        //            //    corEnd.X = iNowPaint_X_End;
-        //            //    corEnd.Y = iNowPaint_Y_End;
-
-        //            //    Cv2.Rectangle(VisualmgMatShows[(int)deviceNum], cor, corEnd, OpenCvSharp.Scalar.FromRgb(0, 255, 0), 2);
-        //            //    VisualProspectImages[(int)deviceNum] = (Bitmap)VisualmgMatShows[(int)deviceNum].ToBitmap().Clone();
-        //            //}
-
-        //            //if (bIfGetEnd == true && picturboxType == 2 && (int)deviceNum == 1) //正在画矩形
-        //            //{
-        //            //    cor.X = iNowPaint_X_Start;
-        //            //    cor.Y = iNowPaint_Y_Start;
-        //            //    corEnd.X = iNowPaint_X_End;
-        //            //    corEnd.Y = iNowPaint_Y_End;
-
-        //            //    Cv2.Rectangle(VisualmgMatShows[(int)deviceNum], cor, corEnd, OpenCvSharp.Scalar.FromRgb(0, 255, 0), 2);
-        //            //    VisualProspectImages[(int)deviceNum] = (Bitmap)VisualmgMatShows[(int)deviceNum].ToBitmap().Clone();
-        //            //}
-
-        //            //if (iTick == 1 && (int)deviceNum == 0)
-        //            //{
-        //            //    Console.WriteLine("保存图像");
-
-        //            //    try
-        //            //    {
-        //            //        string strFileName = System.Windows.Forms.Application.StartupPath + "test.bmp";
-        //            //        Cv2.ImWrite(@"D:\test.bmp", VisualmgMatShows[(int)deviceNum]);
-        //            //        iTick = 0;
-        //            //    }
-        //            //    catch(Exception e)
-        //            //    {
-        //            //        Console.WriteLine(e.ToString());
-        //            //    }
-
-        //            //}
-
-        //            //if(flag == false)
-        //            //{
-        //            //flag = true;
-
-        //            //    cor.X = 0;
-        //            //    cor.Y = 0;
-        //            //    corEnd.X = 100;
-        //            //    corEnd.Y = 100;
-
-
-        //            //    Cv2.Rectangle(VisualmgMatShows[(int)deviceNum], cor, corEnd, OpenCvSharp.Scalar.FromRgb(0, 255, 0), 2);
-        //            //}
-
-
-
-        //            //byte[] bytes = readBitmapToBytes(VisualProspectImage);
-        //            ////Console.WriteLine(bytes.Length);
-
-        //            //Console.WriteLine("红外图像数组长度" + bytes.Length);
-
-        //            //string path = "E:\\test.jpg";
-        //            //VisualProspectImage.Save(path, System.Drawing.Imaging.ImageFormat.Jpeg);
-
-
-        //            //Invalidate();
-        //            //visual_pictureBox.Invalidate();
-
-        //            pic.Image = IRProspectImage;
-        //            pic.Refresh();
-
-        //            //if (i == 100)
-        //            //{
-        //            //dataArrayList.AddLast(bytes);
-        //            //if (dataArrayList.Count >= 3)
-        //            //{
-        //            //    dataArrayList.RemoveFirst();
-        //            //}
-        //            //    i = 0;
-        //            //}
-        //            IRProspectImage = null;
-        //            Thread.Sleep(10);
-
-        //            Application.DoEvents();
-        //            GC.Collect();
-
-        //        }
-        //    }
-
-        //}
 
 
         /// <summary>
@@ -400,42 +332,68 @@ namespace A8_TEST
             {
                 Console.WriteLine("DeCoding run...");
                 Bitmap oldBmp = null;
-                VideoWriter writer = new VideoWriter("output_video.avi", FourCC.XVID,25, new OpenCvSharp.Size(768, 576), true);
+                //利用opencv 录制视频
+                VideoWriter writer = new VideoWriter("output_video.avi", FourCC.XVID, 25, new OpenCvSharp.Size(768, 576), true);
 
                 // 更新图片显示
                 tstRtmp.ShowBitmap show = (bmp) =>
                 {
                     this.Invoke(new MethodInvoker(() =>
                     {
-                        this.pic.Image = bmp;
-
-                        using (Graphics gfx = Graphics.FromImage(bmp))
+                        if (bmp != null)
                         {
-                            // 设置文字的格式
-                            Font font = new Font("Arial", 12);
-                            Brush brush = Brushes.Black;
+                           
+                            using (Graphics gfx = Graphics.FromImage(bmp))//bmp.Width = 768,bmp.Height = 576
+                            {
+                                // 设置文字的格式
+                                Font font = new Font("Arial", 12);
+                                Brush brush = Brushes.Red;
+                                Pen pen = new Pen(Color.Red, 2);
 
-                            // 在Bitmap上绘制文字
-                            //gfx.DrawString("123", font, brush, 100, 100);
+                              
+                                string maxTemp;
+                                PointF point;
+                                float pt = 2.0f; //显示水平缩放比例温度数据是384 * 288，视频图像768 * 576      
 
+
+                                a8Lists[0].Get_globa_temp(out globa_Temp);//获取全局温度信息
+                                maxTemp = ((float)globa_Temp.max_temp / 10).ToString("F1");//全局最高温度
+
+
+                                float maxTempX = globa_Temp.max_temp_x * pt;
+                                float maxTempY = globa_Temp.max_temp_y * pt;
+
+                                SizeF maxTempStringSize = gfx.MeasureString(maxTemp, font);
+
+                                if (maxTempX + maxTempStringSize.Width > bmp.Width)
+                                {
+                                    maxTempX = maxTempX - maxTempStringSize.Width;
+                                }
+
+                                if (maxTempY + maxTempStringSize.Height > bmp.Height)
+                                {
+                                    maxTempY = maxTempY - maxTempStringSize.Height;
+                                }
+                                point = new PointF(maxTempX, maxTempY);
+
+                                gfx.DrawString(maxTemp, font, brush, point);
+
+                                DrawCrossLine(gfx, globa_Temp.max_temp_x * pt, globa_Temp.max_temp_y * pt, pen, 10);
+
+                            }
                         }
 
                         // 保存Bitmap到文件
                         //bmp.Save(@"C:\Users\Dell\Desktop\1.png", System.Drawing.Imaging.ImageFormat.Png);
 
-                             if (saveVideoFlag)
-                            {
-                                Console.WriteLine(writer.IsOpened());
-                                Mat mat = Bitmap2Mat(bmp);
-                                writer.Write(mat);
-                            }
-                       
-
-                        A8SDK.globa_temp globa_Temp;
-
-                        a8Lists[0].Get_globa_temp(out globa_Temp);
-                        Console.WriteLine(globa_Temp.max_temp);
-
+                        if (saveVideoFlag)
+                        {
+                            Console.WriteLine(writer.IsOpened());
+                            Mat mat = Bitmap2Mat(bmp);
+                            writer.Write(mat);
+                        }
+                        //pic.Image = bmp;
+                        pics[0].Image = bmp;
                         if (oldBmp != null)
                         {
                             oldBmp.Dispose();
@@ -462,6 +420,22 @@ namespace A8_TEST
                     button1.Enabled = true;
                 }));
             }
+        }
+
+        /// <summary>
+        /// 绘制十字交叉线
+        /// </summary>
+        /// <param name="g"></param>
+        /// <param name="startX"></param>
+        /// <param name="startY"></param>
+        /// <param name="pen"></param>
+        /// <param name="lineWidth"></param>
+        private void DrawCrossLine(Graphics g, float startX, float startY, Pen pen, int lineLength)
+        {
+            g.DrawLine(pen, startX, startY, startX + lineLength, startY);
+            g.DrawLine(pen, startX, startY, startX - lineLength, startY);
+            g.DrawLine(pen, startX, startY, startX, startY + lineLength);
+            g.DrawLine(pen, startX, startY, startX, startY - lineLength);
         }
 
         private unsafe void DeCodinglz()
@@ -542,6 +516,39 @@ namespace A8_TEST
         private void Form1_Load(object sender, EventArgs e)
         {
 
+        }
+
+        private void UiButton1_Click(object sender, EventArgs e)
+        {
+            button1.Enabled = false;
+            if (thPlayer != null)
+            {
+                rtmp.Stop();
+
+                thPlayer = null;
+            }
+            else
+            {
+                thPlayer = new Thread(DeCoding);
+                thPlayer.IsBackground = true;
+                thPlayer.Start();
+                button1.Text = "停止播放";
+                button1.Enabled = true;
+            }
+
+            //thPreview = new Thread(ShowIRImageThreadProc);
+            //thPreview.IsBackground = true;
+            //thPreview.Start();
+        }
+
+        private void ToolStrip1_ItemClicked(object sender, ToolStripItemClickedEventArgs e)
+        {
+
+        }
+
+        private void Timer1_Tick(object sender, EventArgs e)
+        {
+            a8Lists[0].Get_globa_temp(out globa_Temp);//获取全局温度信息
         }
     }
 }

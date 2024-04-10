@@ -74,9 +74,22 @@ namespace A8_TEST
             AVFormatContext* pFormatContext = ffmpeg.avformat_alloc_context();
 
             int error;
+            //设置参数
+            //设置TCP方式拉流
+            AVDictionary* format_opts = null;
+            ffmpeg.av_dict_set(&format_opts, "stimeout", Convert.ToString(2 * 1000000), 0); //设置链接超时时间（us）
+            ffmpeg.av_dict_set(&format_opts, "rtsp_transport", "tcp", 0); //设置推流的方式，默认udp。
+            ffmpeg.av_dict_set(&format_opts, "max_delay", "500000", 0); //设置最大时延
+            ffmpeg.av_dict_set(&format_opts, "buffer_size", "102400", 0); //设置缓存大小，1080p可将值调大
+
+            //初始化输入上下文
 
             //打开流
-            error = ffmpeg.avformat_open_input(&pFormatContext, url, null, null);
+            //error = ffmpeg.avformat_open_input(&pFormatContext, url, null, null);
+            error = ffmpeg.avformat_open_input(&pFormatContext, url, null, &format_opts);
+
+            ////打开流
+            //error = ffmpeg.avformat_open_input(&pFormatContext, url, null, null);
             if (error != 0) throw new ApplicationException(GetErrorMessage(error));
 
             // 读取媒体流信息
