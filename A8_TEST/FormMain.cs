@@ -18,16 +18,6 @@ namespace A8_TEST
 {
     public partial class FormMain : UIForm
     {
-        tstRtmp rtmp = new tstRtmp();
-        Rtsplz rtsplz = new Rtsplz();
-        Thread thPlayer;
-        Thread thPlayerlz;
-        SynchronizationContext m_SyncContext = null; //获取上下文
-
-        List<string> ipLists = new List<string>();
-        List<A8SDK> a8Lists = new List<A8SDK>();
-        private bool saveVideoFlag = false;
-
         const uint DISPLAYWND_GAP = 1;//监控画面的间隙
         const uint DISPLAYWND_MARGIN_LEFT = 1;//监控画面距离左边控件的距离
         const uint DISPLAYWND_MARGIN_TOP = 1; //监控画面距离上边的距离
@@ -35,15 +25,28 @@ namespace A8_TEST
 
         Color PIC_CLICKED_COLOR = Color.FromArgb(128, 128, 255);
         Color PIC_UNCLICKED_COLOR = Color.FromArgb(45, 45, 53);
-
         private PictureBox[] pics;//显示图像控件
-                                  // private UIPanel pixUIPanel;//容纳PictureBox的Panel
+        private UIPage fmonitor;//监控界面
+
+        tstRtmp rtmp = new tstRtmp();//利用ffmpeg获取视频数据
+        Rtsplz rtsplz = new Rtsplz();
+        Thread thPlayer;//播放红外图像线程
+        Thread thPlayerlz;
+        SynchronizationContext m_SyncContext = null; //获取上下文
+
+        List<string> ipLists = new List<string>(); //设备ip集合
+        List<A8SDK> a8Lists = new List<A8SDK>();
+        private bool saveVideoFlag = false;
+     
+        // private UIPanel pixUIPanel;//容纳PictureBox的Panel
         //public static TransparentLabel[] labels;//图像上面标注控件,背景透明
 
-        private UIPage fmonitor;//监控界面
         A8SDK.globa_temp globa_Temp;
 
-        List<List<Bitmap>> imageList = new List<List<Bitmap>>();
+        List<List<Bitmap>> imageList = new List<List<Bitmap>>();//存储图像的集合
+        List<Bitmap> irImageList = new List<Bitmap>();
+        Thread threadPrewview;
+
 
         [Obsolete]
         public FormMain()
@@ -52,7 +55,6 @@ namespace A8_TEST
             InitializeComponent();
             m_SyncContext = SynchronizationContext.Current;
             Control.CheckForIllegalCrossThreadCalls = false;
-
 
 
             //查找红外设备ip地址
@@ -93,12 +95,84 @@ namespace A8_TEST
 
             initDatas();
 
-            SetFmonitorDisplayWnds(1, 1);
+            SetFmonitorDisplayWnds(1, 2);
 
             thPlayer = new Thread(DeCoding);
             thPlayer.IsBackground = true;
             thPlayer.Start();
 
+
+            threadPrewview = new Thread(Prewview);
+            threadPrewview.IsBackground = true;
+            threadPrewview.Start();
+
+
+        }
+
+        private void Prewview()
+        {
+            int i = 0;
+            while (true)
+            {
+                try
+                {
+                    if (irImageList.Count > 0)
+                    {
+                        Bitmap bitmap = irImageList[0];
+                        //Bitmap bitmap = imageList[0][0];
+                        pics[0].Image = bitmap;
+
+                        if (bitmap != null)
+                        {
+                            using (Graphics gfx = Graphics.FromImage(bitmap))
+                            {
+
+                                Font font = new Font("Arial", 12);
+                                Brush brush = Brushes.Red;
+                                Pen pen = new Pen(Color.Red, 2);
+
+                                string maxTemp;
+                                PointF point;
+                                float pt = 2.0f; //显示水平缩放比例温度数据是384 * 288，视频图像768 * 576      
+
+                                // a8.Get_globa_temp(out globa_Temp);//获取全局温度信息
+
+                                maxTemp = ((float)globa_Temp.max_temp / 10).ToString("F1");//全局最高温度
+
+                                float maxTempX = globa_Temp.max_temp_x * pt;
+                                float maxTempY = globa_Temp.max_temp_y * pt;
+
+                                SizeF maxTempStringSize = gfx.MeasureString(maxTemp, font);
+
+                                if (maxTempX + maxTempStringSize.Width > bitmap.Width)
+                                {
+                                    maxTempX = maxTempX - maxTempStringSize.Width;
+                                }
+
+                                if (maxTempY + maxTempStringSize.Height > bitmap.Height)
+                                {
+                                    maxTempY = maxTempY - maxTempStringSize.Height;
+                                }
+                                point = new PointF(maxTempX, maxTempY);
+
+                                gfx.DrawString(maxTemp, font, brush, point);
+
+                                DrawCrossLine(gfx, globa_Temp.max_temp_x * pt, globa_Temp.max_temp_y * pt, pen, 10);
+
+                                bitmap = null;
+
+                            }
+                        }
+                    }
+
+                    irImageList.RemoveAt(0);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.ToString());
+                }
+                Thread.Sleep(40);
+            }
 
         }
 
@@ -338,70 +412,83 @@ namespace A8_TEST
                 // 更新图片显示
                 tstRtmp.ShowBitmap show = (bmp) =>
                 {
-                    this.Invoke(new MethodInvoker(() =>
+
+                    irImageList.Add(bmp);
+
+                    if (irImageList.Count > 3)
                     {
-                        if (bmp != null)
-                        {
-                           
-                            using (Graphics gfx = Graphics.FromImage(bmp))//bmp.Width = 768,bmp.Height = 576
-                            {
-                                // 设置文字的格式
-                                Font font = new Font("Arial", 12);
-                                Brush brush = Brushes.Red;
-                                Pen pen = new Pen(Color.Red, 2);
+                        irImageList.RemoveAt(0);
+                    }
+                    //imageList[0].Add(bmp);
+                    //if(imageList[0].Count > 3)
+                    //{
+                    //    imageList[0].RemoveAt(0);
+                    //}
 
-                              
-                                string maxTemp;
-                                PointF point;
-                                float pt = 2.0f; //显示水平缩放比例温度数据是384 * 288，视频图像768 * 576      
+                    //this.Invoke(new MethodInvoker(() =>
+                    //{
+                    //    if (bmp != null)
+                    //    {
+
+                    //        using (Graphics gfx = Graphics.FromImage(bmp))//bmp.Width = 768,bmp.Height = 576
+                    //        {
+                    //            // 设置文字的格式
+                    //            Font font = new Font("Arial", 12);
+                    //            Brush brush = Brushes.Red;
+                    //            Pen pen = new Pen(Color.Red, 2);
 
 
-                                a8Lists[0].Get_globa_temp(out globa_Temp);//获取全局温度信息
-                                maxTemp = ((float)globa_Temp.max_temp / 10).ToString("F1");//全局最高温度
+                    //            string maxTemp;
+                    //            PointF point;
+                    //            float pt = 2.0f; //显示水平缩放比例温度数据是384 * 288，视频图像768 * 576      
 
 
-                                float maxTempX = globa_Temp.max_temp_x * pt;
-                                float maxTempY = globa_Temp.max_temp_y * pt;
+                    //            a8Lists[0].Get_globa_temp(out globa_Temp);//获取全局温度信息
+                    //            maxTemp = ((float)globa_Temp.max_temp / 10).ToString("F1");//全局最高温度
 
-                                SizeF maxTempStringSize = gfx.MeasureString(maxTemp, font);
 
-                                if (maxTempX + maxTempStringSize.Width > bmp.Width)
-                                {
-                                    maxTempX = maxTempX - maxTempStringSize.Width;
-                                }
+                    //            float maxTempX = globa_Temp.max_temp_x * pt;
+                    //            float maxTempY = globa_Temp.max_temp_y * pt;
 
-                                if (maxTempY + maxTempStringSize.Height > bmp.Height)
-                                {
-                                    maxTempY = maxTempY - maxTempStringSize.Height;
-                                }
-                                point = new PointF(maxTempX, maxTempY);
+                    //            SizeF maxTempStringSize = gfx.MeasureString(maxTemp, font);
 
-                                gfx.DrawString(maxTemp, font, brush, point);
+                    //            if (maxTempX + maxTempStringSize.Width > bmp.Width)
+                    //            {
+                    //                maxTempX = maxTempX - maxTempStringSize.Width;
+                    //            }
 
-                                DrawCrossLine(gfx, globa_Temp.max_temp_x * pt, globa_Temp.max_temp_y * pt, pen, 10);
+                    //            if (maxTempY + maxTempStringSize.Height > bmp.Height)
+                    //            {
+                    //                maxTempY = maxTempY - maxTempStringSize.Height;
+                    //            }
+                    //            point = new PointF(maxTempX, maxTempY);
 
-                            }
-                        }
+                    //            gfx.DrawString(maxTemp, font, brush, point);
 
-                        // 保存Bitmap到文件
-                        //bmp.Save(@"C:\Users\Dell\Desktop\1.png", System.Drawing.Imaging.ImageFormat.Png);
+                    //            DrawCrossLine(gfx, globa_Temp.max_temp_x * pt, globa_Temp.max_temp_y * pt, pen, 10);
 
-                        if (saveVideoFlag)
-                        {
-                            Console.WriteLine(writer.IsOpened());
-                            Mat mat = Bitmap2Mat(bmp);
-                            writer.Write(mat);
-                        }
-                        //pic.Image = bmp;
-                        pics[0].Image = bmp;
-                        if (oldBmp != null)
-                        {
-                            oldBmp.Dispose();
-                        }
-                        oldBmp = bmp;
-                    }));
+                    //        }
+                    //    }
+
+                    //    // 保存Bitmap到文件
+                    //    //bmp.Save(@"C:\Users\Dell\Desktop\1.png", System.Drawing.Imaging.ImageFormat.Png);
+
+                    //    if (saveVideoFlag)
+                    //    {
+                    //        Console.WriteLine(writer.IsOpened());
+                    //        Mat mat = Bitmap2Mat(bmp);
+                    //        writer.Write(mat);
+                    //    }
+                    //    //pic.Image = bmp;
+                    //    pics[0].Image = bmp;
+                    //    if (oldBmp != null)
+                    //    {
+                    //        oldBmp.Dispose();
+                    //    }
+                    //    oldBmp = bmp;
+                    //}));
                 };
-                rtmp.Start(show, "rtsp://192.168.100.2/webcam");
+                rtmp.Start(show, "rtsp://192.168.1.80/webcam");
                 //rtmp.StartSave(show, "rtsp://192.168.100.2/webcam", "D://123//1.mp4");
                 //rtmp.Start_save(show, "rtsp://192.168.100.2/webcam", "D://123//1.mp4");
 
