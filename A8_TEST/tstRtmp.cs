@@ -38,8 +38,8 @@ namespace A8_TEST
         {
             CanRun = true;
 
-            Console.WriteLine(@"Current directory: " + Environment.CurrentDirectory);
-            Console.WriteLine(@"Runnung in {0}-bit mode.", Environment.Is64BitProcess ? @"64" : @"32");
+            //Console.WriteLine(@"Current directory: " + Environment.CurrentDirectory);
+            //Console.WriteLine(@"Runnung in {0}-bit mode.", Environment.Is64BitProcess ? @"64" : @"32");
             //FFmpegDLL目录查找和设置
             FFmpegBinariesHelper.RegisterFFmpegBinaries();
 
@@ -102,7 +102,7 @@ namespace A8_TEST
             {
                 var key = Marshal.PtrToStringAnsi((IntPtr)tag->key);
                 var value = Marshal.PtrToStringAnsi((IntPtr)tag->value);
-                Console.WriteLine($"{key} = {value}");
+                //Console.WriteLine($"{key} = {value}");
             }
 
             // 从格式化上下文获取流索引
@@ -125,7 +125,7 @@ namespace A8_TEST
             // 获取流的编码器上下文
             var codecContext = *pStream->codec;
 
-            Console.WriteLine($"codec name: {ffmpeg.avcodec_get_name(codecContext.codec_id)}");
+           // Console.WriteLine($"codec name: {ffmpeg.avcodec_get_name(codecContext.codec_id)}");
             // 获取图像的宽、高及像素格式
             var width = codecContext.width;
             var height = codecContext.height;
@@ -193,7 +193,7 @@ namespace A8_TEST
                     {
                         // 读取一帧未解码数据
                         error = ffmpeg.av_read_frame(pFormatContext, pPacket);
-                        Console.WriteLine(pPacket->dts);
+                       // Console.WriteLine(pPacket->dts);
                         if (error == ffmpeg.AVERROR_EOF) break;
                         if (error < 0) throw new ApplicationException(GetErrorMessage(error));
 
@@ -210,7 +210,7 @@ namespace A8_TEST
 
                     if (pPacket->stream_index != pStream->index) continue;
 
-                    Console.WriteLine($@"frame: {frameNumber}");
+                    //Console.WriteLine($@"frame: {frameNumber}");
                     // YUV->RGB
                     ffmpeg.sws_scale(pConvertContext, pDecodedFrame->data, pDecodedFrame->linesize, 0, height, dstData, dstLinesize);
                 }
@@ -250,8 +250,8 @@ namespace A8_TEST
         {
             CanRun = true;
             CanRunlz = true;
-            Console.WriteLine(@"Current directory: " + Environment.CurrentDirectory);
-            Console.WriteLine(@"Runnung in {0}-bit mode.", Environment.Is64BitProcess ? @"64" : @"32");
+            //Console.WriteLine(@"Current directory: " + Environment.CurrentDirectory);
+            //Console.WriteLine(@"Runnung in {0}-bit mode.", Environment.Is64BitProcess ? @"64" : @"32");
             //FFmpegDLL目录查找和设置
             FFmpegBinariesHelper.RegisterFFmpegBinaries();
 
@@ -302,7 +302,7 @@ namespace A8_TEST
             {
                 var key = Marshal.PtrToStringAnsi((IntPtr)tag->key);
                 var value = Marshal.PtrToStringAnsi((IntPtr)tag->value);
-                Console.WriteLine($"{key} = {value}");
+                //Console.WriteLine($"{key} = {value}");
             }
 
             // 从格式化上下文获取流索引
@@ -325,7 +325,7 @@ namespace A8_TEST
             // 获取流的编码器上下文
             var codecContext = *pStream->codec;
 
-            Console.WriteLine($"codec name: {ffmpeg.avcodec_get_name(codecContext.codec_id)}");
+            //Console.WriteLine($"codec name: {ffmpeg.avcodec_get_name(codecContext.codec_id)}");
             // 获取图像的宽、高及像素格式
             var width = codecContext.width;
             var height = codecContext.height;
@@ -436,7 +436,7 @@ namespace A8_TEST
                     {
                         // 读取一帧未解码数据
                         error = ffmpeg.av_read_frame(pFormatContext, pPacket);
-                        Console.WriteLine(pPacket->dts);
+                        //Console.WriteLine(pPacket->dts);
                         if (error == ffmpeg.AVERROR_EOF) break;
                         if (error < 0) throw new ApplicationException(GetErrorMessage(error));
 

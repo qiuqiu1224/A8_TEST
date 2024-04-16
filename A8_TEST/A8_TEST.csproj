@@ -105,6 +105,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CHCNetSDK.cs" />
     <Compile Include="FFmpegBinariesHelper.cs" />
     <Compile Include="FMonitor.cs">
       <SubType>Form</SubType>
@@ -124,9 +125,11 @@
     <Compile Include="Form2.Designer.cs">
       <DependentUpon>Form2.cs</DependentUpon>
     </Compile>
+    <Compile Include="Globals.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Rtsplz.cs" />
+    <Compile Include="SystemParam.cs" />
     <Compile Include="tstRtmp.cs" />
     <EmbeddedResource Include="FMonitor.resx">
       <DependentUpon>FMonitor.cs</DependentUpon>

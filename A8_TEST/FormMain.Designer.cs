@@ -35,11 +35,14 @@ namespace A8_TEST
             this.button1 = new System.Windows.Forms.Button();
             this.button2 = new System.Windows.Forms.Button();
             this.uiNavBar1 = new Sunny.UI.UINavBar();
+            this.uiButton1 = new Sunny.UI.UIButton();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.uiTabControl1 = new Sunny.UI.UITabControl();
             this.tabPage2 = new System.Windows.Forms.TabPage();
             this.tabPage1 = new System.Windows.Forms.TabPage();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
+            this.timer2 = new System.Windows.Forms.Timer(this.components);
+            this.timer3 = new System.Windows.Forms.Timer(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.pic)).BeginInit();
             this.uiNavBar1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
@@ -79,6 +82,7 @@ namespace A8_TEST
             // uiNavBar1
             // 
             this.uiNavBar1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(21)))), ((int)(((byte)(22)))), ((int)(((byte)(27)))));
+            this.uiNavBar1.Controls.Add(this.uiButton1);
             this.uiNavBar1.Controls.Add(this.pictureBox1);
             this.uiNavBar1.Dock = System.Windows.Forms.DockStyle.Top;
             this.uiNavBar1.DropMenuFont = new System.Drawing.Font("宋体", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
@@ -87,15 +91,33 @@ namespace A8_TEST
             this.uiNavBar1.MenuStyle = Sunny.UI.UIMenuStyle.Custom;
             this.uiNavBar1.Name = "uiNavBar1";
             this.uiNavBar1.NodeAlignment = System.Drawing.StringAlignment.Near;
+            this.uiNavBar1.SelectedForeColor = System.Drawing.Color.White;
+            this.uiNavBar1.SelectedHighColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.uiNavBar1.SelectedHighColorSize = 2;
             this.uiNavBar1.Size = new System.Drawing.Size(1235, 49);
             this.uiNavBar1.TabIndex = 3;
             this.uiNavBar1.Text = "uiNavBar1";
+            // 
+            // uiButton1
+            // 
+            this.uiButton1.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.uiButton1.Dock = System.Windows.Forms.DockStyle.Right;
+            this.uiButton1.Font = new System.Drawing.Font("宋体", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiButton1.Location = new System.Drawing.Point(1135, 0);
+            this.uiButton1.MinimumSize = new System.Drawing.Size(1, 1);
+            this.uiButton1.Name = "uiButton1";
+            this.uiButton1.Size = new System.Drawing.Size(100, 49);
+            this.uiButton1.TabIndex = 0;
+            this.uiButton1.Text = "拍照";
+            this.uiButton1.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiButton1.Click += new System.EventHandler(this.UiButton1_Click_1);
             // 
             // pictureBox1
             // 
             this.pictureBox1.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox1.Image")));
             this.pictureBox1.InitialImage = null;
             this.pictureBox1.Location = new System.Drawing.Point(3, 10);
+            this.pictureBox1.Margin = new System.Windows.Forms.Padding(3, 3, 10, 3);
             this.pictureBox1.Name = "pictureBox1";
             this.pictureBox1.Size = new System.Drawing.Size(94, 33);
             this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
@@ -132,9 +154,9 @@ namespace A8_TEST
             // tabPage1
             // 
             this.tabPage1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(31)))), ((int)(((byte)(36)))));
-            this.tabPage1.Location = new System.Drawing.Point(0, 0);
+            this.tabPage1.Location = new System.Drawing.Point(0, 40);
             this.tabPage1.Name = "tabPage1";
-            this.tabPage1.Size = new System.Drawing.Size(1235, 811);
+            this.tabPage1.Size = new System.Drawing.Size(200, 60);
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "tabPage1";
             // 
@@ -142,6 +164,16 @@ namespace A8_TEST
             // 
             this.timer1.Enabled = true;
             this.timer1.Tick += new System.EventHandler(this.Timer1_Tick);
+            // 
+            // timer2
+            // 
+            this.timer2.Interval = 1000;
+            this.timer2.Tick += new System.EventHandler(this.Timer2_Tick);
+            // 
+            // timer3
+            // 
+            this.timer3.Interval = 2000;
+            this.timer3.Tick += new System.EventHandler(this.Timer3_Tick);
             // 
             // FormMain
             // 
@@ -180,6 +212,9 @@ namespace A8_TEST
         private System.Windows.Forms.TabPage tabPage2;
         private System.Windows.Forms.PictureBox pictureBox1;
         private System.Windows.Forms.Timer timer1;
+        private System.Windows.Forms.Timer timer2;
+        private Sunny.UI.UIButton uiButton1;
+        private System.Windows.Forms.Timer timer3;
     }
 }
 

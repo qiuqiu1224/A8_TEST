@@ -31,8 +31,8 @@ namespace A8_TEST
         {
             CanRun = true;
 
-            Console.WriteLine(@"Current directory: " + Environment.CurrentDirectory);
-            Console.WriteLine(@"Runnung in {0}-bit mode.", Environment.Is64BitProcess ? @"64" : @"32");
+            //Console.WriteLine(@"Current directory: " + Environment.CurrentDirectory);
+            //Console.WriteLine(@"Runnung in {0}-bit mode.", Environment.Is64BitProcess ? @"64" : @"32");
             //FFmpegDLL目录查找和设置
             FFmpegBinariesHelper.RegisterFFmpegBinaries();
 
@@ -42,7 +42,7 @@ namespace A8_TEST
             ffmpeg.avcodec_register_all();
             ffmpeg.avformat_network_init();
 
-            Console.WriteLine($"FFmpeg version info: {ffmpeg.av_version_info()}");
+            //Console.WriteLine($"FFmpeg version info: {ffmpeg.av_version_info()}");
             #endregion
 
             #region ffmpeg 日志
@@ -57,7 +57,7 @@ namespace A8_TEST
                 var printPrefix = 1;
                 ffmpeg.av_log_format_line(p0, level, format, vl, lineBuffer, lineSize, &printPrefix);
                 var line = Marshal.PtrToStringAnsi((IntPtr)lineBuffer);
-                Console.Write(line);
+               // Console.Write(line);
             };
             ffmpeg.av_log_set_callback(logCallback);
 
@@ -85,7 +85,7 @@ namespace A8_TEST
             {
                 var key = Marshal.PtrToStringAnsi((IntPtr)tag->key);
                 var value = Marshal.PtrToStringAnsi((IntPtr)tag->value);
-                Console.WriteLine($"{key} = {value}");
+                //Console.WriteLine($"{key} = {value}");
             }
 
             // 从格式化上下文获取流索引
@@ -108,7 +108,7 @@ namespace A8_TEST
             // 获取流的编码器上下文
             var codecContext = *pStream->codec;
 
-            Console.WriteLine($"codec name: {ffmpeg.avcodec_get_name(codecContext.codec_id)}");
+            //Console.WriteLine($"codec name: {ffmpeg.avcodec_get_name(codecContext.codec_id)}");
             // 获取图像的宽、高及像素格式
             var width = codecContext.width;
             var height = codecContext.height;

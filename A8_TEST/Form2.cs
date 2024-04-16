@@ -793,8 +793,9 @@ namespace A8_TEST
         }
     }
 
-    internal class StreamWriter
-    {
-    }
+    //internal class StreamWriter
+    //{
+
+    //}
 }
 
