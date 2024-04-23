@@ -22,7 +22,7 @@ namespace A8_TEST
         private void InitViews()
         {
             int pageIndex = 1000;
-            uiNavMenu1.CreateNode("控件", 61451, 24, pageIndex);
+            //uiNavMenu1.CreateNode("控件", 61451, 24, pageIndex);
         }
 
         private void ToolStripButton1_Click(object sender, EventArgs e)

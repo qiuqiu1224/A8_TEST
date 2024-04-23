@@ -27,8 +27,8 @@ namespace A8_TEST
         Color PIC_UNCLICKED_COLOR = Color.FromArgb(45, 45, 53);
         private PictureBox[] pics;//显示图像控件
         private UIPage fmonitor;//监控界面
-                                // private UIPanel pixUIPanel;//容纳PictureBox的Panel
-                                //public static TransparentLabel[] labels;//图像上面标注控件,背景透明
+        // private UIPanel pixUIPanel;//容纳PictureBox的Panel
+        //public static TransparentLabel[] labels;//图像上面标注控件,背景透明
 
         #region 红外
         tstRtmp rtmp = new tstRtmp();//利用ffmpeg获取视频数据
@@ -39,11 +39,16 @@ namespace A8_TEST
         List<string> ipLists = new List<string>(); //设备ip集合
         List<A8SDK> a8Lists = new List<A8SDK>(); //红外设备A8SDK对象集合
         A8SDK.globa_temp globa_Temp;//全局温度结构对象
-        List<Bitmap> irImageList = new List<Bitmap>();//存储红外图像集合
-        Thread threadPrewview;//红外图像预览线程
+        //List<Bitmap> irImageList = new List<Bitmap>();//存储红外图像集合
+        List<Bitmap>[] irImageLists;//存储红外图像集合
+        List<string> ipList = new List<string>();
+
         #endregion
 
         #region 可见光
+        List<int> mUserIDs = new List<int>();
+        List<int> mRealHandles = new List<int>();
+
         private Int32 m_lUserID = -1;
         private Int32 m_lRealHandle = -1;
         private bool m_bInitSDK = false;
@@ -56,13 +61,15 @@ namespace A8_TEST
         CHCNetSDK.REALDATACALLBACK RealData = null;
         public CHCNetSDK.NET_DVR_TIME m_struTimeCfg;
 
+        List<CHCNetSDK.NET_DVR_DEVICEINFO_V40> DeviceInfos = new List<CHCNetSDK.NET_DVR_DEVICEINFO_V40>();
+
         #endregion
 
 
         private bool saveImageFlag;
         private bool saveAlarmImageFlag;
-        private bool saveAlarmIrImageFlag;
-        Object obj0 = new Object();
+
+        List<Object> objects = new List<object>();
 
         [Obsolete]
         public FormMain()
@@ -70,25 +77,33 @@ namespace A8_TEST
 
             InitializeComponent();
 
+
+            this.TopMost = true;
+            this.WindowState = FormWindowState.Maximized;
+
             m_SyncContext = SynchronizationContext.Current;
             Control.CheckForIllegalCrossThreadCalls = false;
+            SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.AllPaintingInWmPaint, true);
+            SetStyle(ControlStyles.UserPaint, true);
+            SetStyle(ControlStyles.AllPaintingInWmPaint, true); // 禁止擦除背景.
+            SetStyle(ControlStyles.DoubleBuffer, true); // 双缓冲
 
             //读取配置文件
             Globals.ReadInfoXml<SystemParam>(ref Globals.systemParam, Globals.systemXml);
 
-            //查找红外设备ip地址
-            ipLists = FindDeviceIpAddress();
 
-            if (ipLists.Count > 0)
-            {
-                for (int i = 0; i < ipLists.Count; i++)
-                {
-                    //初始化红外设备对象，并添加到集合
-                    A8SDK a8 = new A8SDK(ipLists[i]);
-                    a8Lists.Add(a8);
-                }
-            }
+            ////查找红外设备ip地址
+            //ipLists = FindDeviceIpAddress();
 
+            //if (ipLists.Count > 0)
+            //{
+            //    for (int i = 0; i < ipLists.Count; i++)
+            //    {
+            //        //初始化红外设备对象，并添加到集合
+            //        A8SDK a8 = new A8SDK(ipLists[i]);
+            //        a8Lists.Add(a8);
+            //    }
+            //}
 
 
             int pageIndex = PAGE_INDEX;
@@ -97,7 +112,7 @@ namespace A8_TEST
             uiNavBar1.TabControl = uiTabControl1;
 
             //uiNavBar1设置节点，也可以在Nodes属性里配置
-            uiNavBar1.Nodes.Add("红外监控");
+            uiNavBar1.Nodes.Add("在线监控");
             uiNavBar1.SetNodeSymbol(uiNavBar1.Nodes[0], 61501);//设置图标
 
             //添加实时监控界面
@@ -119,35 +134,60 @@ namespace A8_TEST
             initDatas();
             SetFmonitorDisplayWnds(2, 2);
 
+            LoginOpDevice_1(0, Globals.systemParam.op_ip_1, Globals.systemParam.op_username_1, Globals.systemParam.op_psw_1, Globals.systemParam.op_port_1, cbLoginCallBack);
+            PreviewOpDevice_1(0, RealDataCallBack);
 
-            LoginOpDevice_1();
-            PreviewOpDevice_1();
-
+            //设备校时
             Timing();
 
             //开启解码红外视频线程
-            thPlayer = new Thread(DeCoding);
-            thPlayer.IsBackground = true;
-            thPlayer.Start();
+            //thPlayer = new Thread(DeCoding);
+            //thPlayer.IsBackground = true;
+            //thPlayer.Start();
 
-            //开启红外图像预览线程
-            threadPrewview = new Thread(Prewview);
-            threadPrewview.IsBackground = true;
-            threadPrewview.Start();
+            ////开启红外图像预览线程
+            //threadPrewview = new Thread(Prewview);
+            //threadPrewview.IsBackground = true;
+            //threadPrewview.Start();
+
+            //开启解码红外视频线程
+            DecodingIRImage(0);
+
+            ////开启红外图像预览线程
+            PreviewIRImage(0);
+
         }
 
-        private void PreviewOpDevice_1()
+        private void DecodingIRImage(int num)
         {
-            if (m_lUserID < 0)
+            ParameterizedThreadStart thStart = new ParameterizedThreadStart(DeCoding);//threadStart委托 
+            Thread thread = new Thread(thStart);
+            //thread.Priority = ThreadPriority.Highest;
+            thread.IsBackground = true; //关闭窗体继续执行
+            thread.Start(num);
+        }
+
+        private void PreviewIRImage(int num)
+        {
+            ParameterizedThreadStart thStart = new ParameterizedThreadStart(ShowIRImageThreadProc);//threadStart委托 
+            Thread thread = new Thread(thStart);
+            //thread.Priority = ThreadPriority.Highest;
+            thread.IsBackground = true; //关闭窗体继续执行
+            thread.Start(num);
+        }
+
+        private void PreviewOpDevice_1(int deviceNum, CHCNetSDK.REALDATACALLBACK realCallback)
+        {
+            if (mUserIDs[deviceNum] < 0)
             {
                 MessageBox.Show("Please login the device firstly");
                 return;
             }
 
-            if (m_lRealHandle < 0)
+            if (mRealHandles[deviceNum] < 0)
             {
                 CHCNetSDK.NET_DVR_PREVIEWINFO lpPreviewInfo = new CHCNetSDK.NET_DVR_PREVIEWINFO();
-                lpPreviewInfo.hPlayWnd = pics[1].Handle;//预览窗口
+                lpPreviewInfo.hPlayWnd = pics[deviceNum * 2 + 1].Handle;//预览窗口
                 lpPreviewInfo.lChannel = Int16.Parse("1");//预te览的设备通道
                 lpPreviewInfo.dwStreamType = 0;//码流类型：0-主码流，1-子码流，2-码流3，3-码流4，以此类推
                 lpPreviewInfo.dwLinkMode = 0;//连接方式：0- TCP方式，1- UDP方式，2- 多播方式，3- RTP方式，4-RTP/RTSP，5-RSTP/HTTP 
@@ -167,14 +207,14 @@ namespace A8_TEST
 
                 if (RealData == null)
                 {
-                    RealData = new CHCNetSDK.REALDATACALLBACK(RealDataCallBack);//预览实时流回调函数
+                    RealData = new CHCNetSDK.REALDATACALLBACK(realCallback);//预览实时流回调函数
                 }
 
                 IntPtr pUser = new IntPtr();//用户数据
 
                 //打开预览 Start live view 
-                m_lRealHandle = CHCNetSDK.NET_DVR_RealPlay_V40(m_lUserID, ref lpPreviewInfo, null/*RealData*/, pUser);
-                if (m_lRealHandle < 0)
+                mRealHandles[deviceNum] = CHCNetSDK.NET_DVR_RealPlay_V40(mUserIDs[deviceNum], ref lpPreviewInfo, null/*RealData*/, pUser);
+                if (mRealHandles[deviceNum] < 0)
                 {
                     iLastErr = CHCNetSDK.NET_DVR_GetLastError();
                     str = "NET_DVR_RealPlay_V40 failed, error code= " + iLastErr; //预览失败，输出错误号
@@ -232,7 +272,7 @@ namespace A8_TEST
             }
         }
 
-        private void LoginOpDevice_1()
+        private void LoginOpDevice_1(int deviceNum, string ipAddress, string userName, string psw, string port, CHCNetSDK.LOGINRESULTCALLBACK loginCallBack)
         {
             m_bInitSDK = CHCNetSDK.NET_DVR_Init();
             if (m_bInitSDK == false)
@@ -246,40 +286,40 @@ namespace A8_TEST
                 CHCNetSDK.NET_DVR_SetLogToFile(3, "C:\\SdkLog\\", true);
             }
 
-            if (m_lUserID < 0)
+            if (mUserIDs[deviceNum] < 0)
             {
 
                 struLogInfo = new CHCNetSDK.NET_DVR_USER_LOGIN_INFO();
 
                 //设备IP地址或者域名
-                byte[] byIP = System.Text.Encoding.Default.GetBytes(Globals.systemParam.op_ip_1);
+                byte[] byIP = System.Text.Encoding.Default.GetBytes(ipAddress);
                 struLogInfo.sDeviceAddress = new byte[129];
                 byIP.CopyTo(struLogInfo.sDeviceAddress, 0);
 
                 //设备用户名
-                byte[] byUserName = System.Text.Encoding.Default.GetBytes(Globals.systemParam.op_username_1);
+                byte[] byUserName = System.Text.Encoding.Default.GetBytes(userName);
                 struLogInfo.sUserName = new byte[64];
                 byUserName.CopyTo(struLogInfo.sUserName, 0);
 
                 //设备密码
-                byte[] byPassword = System.Text.Encoding.Default.GetBytes(Globals.systemParam.op_psw_1);
+                byte[] byPassword = System.Text.Encoding.Default.GetBytes(psw);
                 struLogInfo.sPassword = new byte[64];
                 byPassword.CopyTo(struLogInfo.sPassword, 0);
 
-                struLogInfo.wPort = ushort.Parse(Globals.systemParam.op_port_1);//设备服务端口号
+                struLogInfo.wPort = ushort.Parse(port);//设备服务端口号
 
                 if (LoginCallBack == null)
                 {
-                    LoginCallBack = new CHCNetSDK.LOGINRESULTCALLBACK(cbLoginCallBack);//注册回调函数                    
+                    LoginCallBack = new CHCNetSDK.LOGINRESULTCALLBACK(loginCallBack);//注册回调函数                    
                 }
                 struLogInfo.cbLoginResult = LoginCallBack;
                 struLogInfo.bUseAsynLogin = false; //是否异步登录：0- 否，1- 是 
 
-                DeviceInfo = new CHCNetSDK.NET_DVR_DEVICEINFO_V40();
+                DeviceInfo = DeviceInfos[deviceNum];
 
                 //登录设备 Login the device
-                m_lUserID = CHCNetSDK.NET_DVR_Login_V40(ref struLogInfo, ref DeviceInfo);
-                if (m_lUserID < 0)
+                mUserIDs[deviceNum] = CHCNetSDK.NET_DVR_Login_V40(ref struLogInfo, ref DeviceInfo);
+                if (mUserIDs[deviceNum] < 0)
                 {
                     iLastErr = CHCNetSDK.NET_DVR_GetLastError();
                     str = "NET_DVR_Login_V40 failed, error code= " + iLastErr; //登录失败，输出错误号
@@ -289,29 +329,29 @@ namespace A8_TEST
                 else
                 {
                     //登录成功
-                    MessageBox.Show("Login Success!");
+                    //MessageBox.Show("Login Success!");
                 }
 
             }
-            else
-            {
-                //注销登录 Logout the device
-                if (m_lRealHandle >= 0)
-                {
-                    MessageBox.Show("Please stop live view firstly");
-                    return;
-                }
+            //else
+            //{
+            //    //注销登录 Logout the device
+            //    if (m_lRealHandle >= 0)
+            //    {
+            //        MessageBox.Show("Please stop live view firstly");
+            //        return;
+            //    }
 
-                if (!CHCNetSDK.NET_DVR_Logout(m_lUserID))
-                {
-                    iLastErr = CHCNetSDK.NET_DVR_GetLastError();
-                    str = "NET_DVR_Logout failed, error code= " + iLastErr;
-                    MessageBox.Show(str);
-                    return;
-                }
-                m_lUserID = -1;
+            //    if (!CHCNetSDK.NET_DVR_Logout(userId))
+            //    {
+            //        iLastErr = CHCNetSDK.NET_DVR_GetLastError();
+            //        str = "NET_DVR_Logout failed, error code= " + iLastErr;
+            //        MessageBox.Show(str);
+            //        return;
+            //    }
+            //    mUserIDs[deviceNum] = -1;
 
-            }
+            //}
         }
 
         public void cbLoginCallBack(int lUserID, int dwResult, IntPtr lpDeviceInfo, IntPtr pUser)
@@ -343,131 +383,142 @@ namespace A8_TEST
         /// <summary>
         /// 红外图像预览线程执行方法
         /// </summary>
-        private void Prewview()
+        private void ShowIRImageThreadProc(object deviceNum)
         {
             //利用VideoWriter对象 录制视频  红外视频帧频25HZ，分辨率768*576      
             VideoWriter writer = new VideoWriter("output_video.avi", FourCC.XVID, 25, new OpenCvSharp.Size(768, 576), true);
             int i = 0;
             int j = 0;
+            int num = (int)deviceNum;
             while (true)
             {
                 try
                 {
-                    if (irImageList.Count > 0)
+                    //Console.WriteLine("irImageLists[num].Count" + irImageLists[num].Count);
+                    if (irImageLists[num].Count > 0)
                     {
-                        Bitmap bitmap = (Bitmap)irImageList[0].Clone();
+                        //this.Invoke(new MethodInvoker(() =>
+                        //{
+                            Bitmap bitmap = (Bitmap)irImageLists[num][0].Clone();
 
-                        if (bitmap != null)
-                        {
-                            using (Graphics gfx = Graphics.FromImage(bitmap))
+                            if (bitmap != null)
                             {
-
-                                Font font = new Font("Arial", 14);
-                                //SolidBrush solidBrush = new SolidBrush(Color.FromArgb(205,51,51)) ;
-                                Brush brush = Brushes.LightGreen;
-                                Pen pen = new Pen(Color.Red, 2);
-
-                                string maxTemp;
-                                PointF point;
-                                float pt = 2.0f; //显示水平缩放比例温度数据是384 * 288，视频图像768 * 576      
-
-                                maxTemp = ((float)globa_Temp.max_temp / 10).ToString("F1");//全局最高温度，保留一位小数
-                                float max = float.Parse(maxTemp);
-
-                                //图像最高温度大于设定的高温报警阈值，保存图像
-                                if (max >= Globals.systemParam.alarm_1)
+                                using (Graphics gfx = Graphics.FromImage(bitmap))
                                 {
-                                    if (i == 0)
+
+                                    Font font = new Font("Arial", 14);
+                                    //SolidBrush solidBrush = new SolidBrush(Color.FromArgb(205,51,51)) ;
+                                    Brush brush = Brushes.LightGreen;
+                                    Pen pen = new Pen(Color.Red, 2);
+
+                                    string maxTemp;
+                                    PointF point;
+                                    float pt = 2.0f; //显示水平缩放比例温度数据是384 * 288，视频图像768 * 576      
+
+                                    maxTemp = ((float)globa_Temp.max_temp / 10).ToString("F1");//全局最高温度，保留一位小数
+                                    float max = float.Parse(maxTemp);
+
+                                    //图像最高温度大于设定的高温报警阈值，保存图像
+                                    if (max >= Globals.systemParam.alarm_1)
                                     {
-                                        saveAlarmImageFlag = true;                                       
-                                        i = 1;                                      
+                                        if (i == 0)
+                                        {
+                                            saveAlarmImageFlag = true;
+                                            i = 1;
+                                        }
+
                                     }
-
-                                }
-                                else//温度低于报警阈值时，关闭保存图像定时器
-                                {
-                                    i = 0;
-                                    j = 0;
-
-                                    this.Invoke((MethodInvoker)delegate
-                                    {                                      
-                                        timer3.Enabled = false;
-                                        timer3.Stop();
-                                    });
-
-                                    saveAlarmImageFlag = false;
-
-                                }
-
-                                float maxTempX = globa_Temp.max_temp_x * pt;
-                                float maxTempY = globa_Temp.max_temp_y * pt;
-
-                                //获取最大值字符串在屏幕上显示的尺寸
-                                SizeF maxTempStringSize = gfx.MeasureString(maxTemp, font);
-
-                                //超出边界，调整显示位置
-                                if (maxTempX + maxTempStringSize.Width > bitmap.Width)
-                                {
-                                    maxTempX = maxTempX - maxTempStringSize.Width;
-                                }
-
-                                if (maxTempY + maxTempStringSize.Height > bitmap.Height)
-                                {
-                                    maxTempY = maxTempY - maxTempStringSize.Height;
-                                }
-
-                                point = new PointF(maxTempX, maxTempY);
-
-                                gfx.DrawString(maxTemp, font, brush, point);
-
-                                DrawCrossLine(gfx, globa_Temp.max_temp_x * pt, globa_Temp.max_temp_y * pt, pen, 10);
-
-                                if (saveImageFlag)
-                                {
-                                    string IrImagePath = GetIrImageFilePath(Globals.ImageDirectoryPath,0);
-                                    bitmap.Save(IrImagePath, System.Drawing.Imaging.ImageFormat.Bmp);
-                                    saveImageFlag = false;
-                                }
-
-                                //保存报警图像
-                                if (saveAlarmImageFlag)
-                                {
-                                    string IrImagePath = GetIrImageFilePath(Globals.AlarmImageDirectoryPath, 0);
-                                    bitmap.Save(IrImagePath, System.Drawing.Imaging.ImageFormat.Bmp);
-
-                                    if(j == 0)
+                                    else//温度低于报警阈值时，关闭保存图像定时器
                                     {
-                                        SaveOpImage(Globals.AlarmImageDirectoryPath,m_lRealHandle, 1);
+                                        i = 0;
+                                        j = 0;
+
                                         this.Invoke((MethodInvoker)delegate
                                         {
-                                            //开启定时器，定时保存图像
-                                            timer3.Enabled = true;
-                                            timer3.Start();
+                                            timer3.Enabled = false;
+                                            timer3.Stop();
                                         });
-                                        
-                                        j = 1;
+
+                                        saveAlarmImageFlag = false;
+
                                     }
 
-                                    saveAlarmImageFlag = false;                                
+                                    float maxTempX = globa_Temp.max_temp_x * pt;
+                                    float maxTempY = globa_Temp.max_temp_y * pt;
+
+                                    //获取最大值字符串在屏幕上显示的尺寸
+                                    SizeF maxTempStringSize = gfx.MeasureString(maxTemp, font);
+
+                                    //超出边界，调整显示位置
+                                    if (maxTempX + maxTempStringSize.Width > bitmap.Width)
+                                    {
+                                        maxTempX = maxTempX - maxTempStringSize.Width;
+                                    }
+
+                                    if (maxTempY + maxTempStringSize.Height > bitmap.Height)
+                                    {
+                                        maxTempY = maxTempY - maxTempStringSize.Height;
+                                    }
+
+                                    point = new PointF(maxTempX, maxTempY);
+
+                                    gfx.DrawString(maxTemp, font, brush, point);
+
+                                    DrawCrossLine(gfx, globa_Temp.max_temp_x * pt, globa_Temp.max_temp_y * pt, pen, 10);
+
+                                    if (saveImageFlag)
+                                    {
+                                        string IrImagePath = GetIrImageFilePath(Globals.ImageDirectoryPath, 0);
+                                        bitmap.Save(IrImagePath, System.Drawing.Imaging.ImageFormat.Bmp);
+                                        saveImageFlag = false;
+                                    }
+
+                                    //保存报警图像
+                                    if (saveAlarmImageFlag)
+                                    {
+                                        string IrImagePath = GetIrImageFilePath(Globals.AlarmImageDirectoryPath, 0);
+                                        bitmap.Save(IrImagePath, System.Drawing.Imaging.ImageFormat.Bmp);
+
+                                        if (j == 0)
+                                        {
+                                            SaveOpImage(Globals.AlarmImageDirectoryPath, mRealHandles[0], 1);
+                                            this.Invoke((MethodInvoker)delegate
+                                            {
+                                                //开启定时器，定时保存图像
+                                                timer3.Enabled = true;
+                                                timer3.Start();
+                                            });
+
+                                            j = 1;
+                                        }
+
+                                        saveAlarmImageFlag = false;
+
+                                    }
+                                    pics[num].Image = bitmap;
+                                    //    // 保存Bitmap到文件
+                                    //    //bmp.Save(@"C:\Users\Dell\Desktop\1.png", System.Drawing.Imaging.ImageFormat.Png);
+
+                                    //    if (saveVideoFlag)
+                                    //    {
+                                    //        Console.WriteLine(writer.IsOpened());
+                                    //        Mat mat = Bitmap2Mat(bmp);
+                                    //        writer.Write(mat);
+                                    //    }
+
+                                    bitmap= null ;
 
                                 }
-                                pics[0].Image = bitmap;
-                                //    // 保存Bitmap到文件
-                                //    //bmp.Save(@"C:\Users\Dell\Desktop\1.png", System.Drawing.Imaging.ImageFormat.Png);
-
-                                //    if (saveVideoFlag)
-                                //    {
-                                //        Console.WriteLine(writer.IsOpened());
-                                //        Mat mat = Bitmap2Mat(bmp);
-                                //        writer.Write(mat);
-                                //    }
-
-                                bitmap = null;
-
                             }
+                        //}));
+                        if(irImageLists[num].Count > 5)
+                        {
+                            irImageLists[num].RemoveRange(0, irImageLists[num].Count - 5);
                         }
+                       
+                        //irImageLists[num].RemoveAt(0);
                     }
-                    irImageList.RemoveAt(0);
+
                 }
                 catch (Exception ex)
                 {
@@ -477,7 +528,7 @@ namespace A8_TEST
             }
         }
 
-        private string GetIrImageFilePath(string rootPath,int deviceNum)
+        private string GetIrImageFilePath(string rootPath, int deviceNum)
         {
             string imagePath = rootPath + deviceNum;
 
@@ -494,9 +545,32 @@ namespace A8_TEST
 
         private void initDatas()
         {
-            int deviceNum = Globals.systemParam.deviceNum;
-            pics = new PictureBox[deviceNum * 2];//定义显示图像控件，每个设备显示可见光和红外图像。
 
+            int deviceCount = Globals.systemParam.deviceCount;
+
+            pics = new PictureBox[deviceCount * 2];//定义显示图像控件，每个设备显示可见光和红外图像。
+
+            irImageLists = new List<Bitmap>[deviceCount];
+
+            ipList.Add(Globals.systemParam.ir_ip_1);
+            ipList.Add(Globals.systemParam.ir_ip_2);
+
+            for (int i = 0; i < deviceCount; i++)
+            {
+                //初始化userId为-1
+                mUserIDs.Add(-1);
+
+                irImageLists[i] = new List<Bitmap>();
+                //初始化红外设备对象，并添加到集合
+                A8SDK a8 = new A8SDK(ipList[i]);
+                a8Lists.Add(a8);
+
+                DeviceInfos.Add(new CHCNetSDK.NET_DVR_DEVICEINFO_V40());
+                mRealHandles.Add(-1);
+
+                objects.Add(new object());
+
+            }
         }
 
 
@@ -509,7 +583,8 @@ namespace A8_TEST
         private void SetFmonitorDisplayWnds(uint rowNum, uint colNum)
         {
             //uint w = (uint)(Screen.PrimaryScreen.Bounds.Width - fmonitor.GetControl("uiPanel1").Width);
-            uint w = (uint)(Screen.PrimaryScreen.Bounds.Width - fmonitor.GetControl("uiNavMenu1").Width);
+            //uint w = (uint)(Screen.PrimaryScreen.Bounds.Width - fmonitor.GetControl("uiNavMenu1").Width);
+            uint w = (uint)(Screen.PrimaryScreen.Bounds.Width);
             uint h = (uint)(Screen.PrimaryScreen.Bounds.Height - uiNavBar1.Height - fmonitor.GetControl("uiPanel1").Height);
 
 
@@ -546,7 +621,8 @@ namespace A8_TEST
                 uint y = (uint)fmonitor.GetControl("uiPanel1").Height + (real_height - rowNum * display_height - DISPLAYWND_GAP * (rowNum - 1)) / 2 + (display_height + DISPLAYWND_GAP) * i;
                 for (uint j = 0; j < colNum; j++)
                 {
-                    uint x = (uint)fmonitor.GetControl("uiNavMenu1").Width + (real_width - colNum * display_width - DISPLAYWND_GAP * (colNum - 1)) / 2 + (display_width + DISPLAYWND_GAP) * j;
+                    //uint x = (uint)fmonitor.GetControl("uiNavMenu1").Width + (real_width - colNum * display_width - DISPLAYWND_GAP * (colNum - 1)) / 2 + (display_width + DISPLAYWND_GAP) * j;
+                    uint x = (real_width - colNum * display_width - DISPLAYWND_GAP * (colNum - 1)) / 2 + (display_width + DISPLAYWND_GAP) * j;
 
                     pics[i * 2 + j] = new PictureBox();
                     pics[i * 2 + j].Left = (int)x;
@@ -718,25 +794,25 @@ namespace A8_TEST
         /// 解码线程执行方法
         /// </summary>
         [Obsolete]
-        private unsafe void DeCoding()
+        private unsafe void DeCoding(object deviceNum)
         {
+            int num = (int)deviceNum;
             try
             {
-                Console.WriteLine("DeCoding run...");
-                Bitmap oldBmp = null;
-
+                //Console.WriteLine("DeCoding run...");
+                //Bitmap oldBmp = null;
 
                 // 更新图片显示
                 tstRtmp.ShowBitmap show = (bmp) =>
                 {
-                    lock (obj0)
+                    lock (objects[num])
                     {
-                        irImageList.Add(bmp);
+                        irImageLists[num].Add((Bitmap)bmp.Clone());
 
-                        if (irImageList.Count > 3)
-                        {
-                            irImageList.RemoveAt(0);
-                        }
+                        //if (irImageLists[num].Count > 5)
+                        //{
+                        //    irImageLists[num].RemoveAt(0);
+                        //}
                     }
                 };
                 rtmp.Start(show, "rtsp://192.168.1.80/webcam");
@@ -849,7 +925,9 @@ namespace A8_TEST
 
         private void Form1_Load(object sender, EventArgs e)
         {
-
+            this.TopMost = true;
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.WindowState = FormWindowState.Maximized;
         }
 
         private void UiButton1_Click(object sender, EventArgs e)
@@ -919,7 +997,7 @@ namespace A8_TEST
             IntPtr ptrTimeCfg = Marshal.AllocHGlobal(nSize);
             Marshal.StructureToPtr(m_struTimeCfg, ptrTimeCfg, false);
 
-            if (!CHCNetSDK.NET_DVR_SetDVRConfig(m_lUserID, CHCNetSDK.NET_DVR_SET_TIMECFG, -1, ptrTimeCfg, (UInt32)nSize))
+            if (!CHCNetSDK.NET_DVR_SetDVRConfig(mUserIDs[0], CHCNetSDK.NET_DVR_SET_TIMECFG, -1, ptrTimeCfg, (UInt32)nSize))
             {
                 iLastErr = CHCNetSDK.NET_DVR_GetLastError();
                 str = "NET_DVR_SET_TIMECFG failed, error code= " + iLastErr;
@@ -978,7 +1056,7 @@ namespace A8_TEST
             Marshal.FreeHGlobal(ptrTimeCfg);
         }
 
-        private void SaveOpImage(string rootPath,int /*userID*/handle, int channel)
+        private void SaveOpImage(string rootPath, int /*userID*/handle, int channel)
         {
             string imagePath = rootPath + 0;
 
@@ -1016,20 +1094,30 @@ namespace A8_TEST
             return;
         }
 
-        private void UiButton1_Click_1(object sender, EventArgs e)
-        {
+        //private void UiButton1_Click_1(object sender, EventArgs e)
+        //{
 
-            saveImageFlag = true;
-            SaveOpImage(Globals.ImageDirectoryPath, m_lRealHandle, 1);
-            //saveImageFlag1 = true;
-            // SaveOpImage(m_lRealHandle, 1);
+        //    saveImageFlag = true;
+        //    SaveOpImage(Globals.ImageDirectoryPath, mRealHandles[0], 1);
+        //    //saveImageFlag1 = true;
+        //    // SaveOpImage(m_lRealHandle, 1);
 
-        }
+        //}
 
         private void Timer3_Tick(object sender, EventArgs e)
         {
             saveAlarmImageFlag = true;
-            SaveOpImage(Globals.AlarmImageDirectoryPath,m_lRealHandle,1);            
+            SaveOpImage(Globals.AlarmImageDirectoryPath, mRealHandles[0], 1);
+        }
+
+        private void PictureBox3_Click(object sender, EventArgs e)
+        {
+            this.WindowState = FormWindowState.Minimized;
+        }
+
+        private void PictureBox2_Click(object sender, EventArgs e)
+        {
+            System.Environment.Exit(0);
         }
     }
 }

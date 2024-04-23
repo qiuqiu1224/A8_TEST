@@ -13,8 +13,8 @@ namespace A8_TEST
         public SystemParam() { }
 
         //设备数量
-        [XmlElement(Type = typeof(int), ElementName = "DeviceNum")]
-        public int deviceNum = 2;
+        [XmlElement(Type = typeof(int), ElementName = "DeviceCount")]
+        public int deviceCount = 2;
 
         # region 设备1
         //红外相机IP地址
@@ -43,6 +43,32 @@ namespace A8_TEST
 
         #endregion
 
+        #region 设备2
+        //红外相机IP地址
+        [XmlElement(Type = typeof(string), ElementName = "IR_IP_2")]
+        public string ir_ip_2 = "192.168.1.80";
+
+        //可见光相机IP地址
+        [XmlElement(Type = typeof(string), ElementName = "OP_IP_2")]
+        public string op_ip_2 = "192.168.1.88";
+
+        //可见光相机端口号
+        [XmlElement(Type = typeof(string), ElementName = "OP_PORT_2")]
+        public string op_port_2 = "8000";
+
+        //可见光相机用户名
+        [XmlElement(Type = typeof(string), ElementName = "OP_USERNAME_2")]
+        public string op_username_2 = "admin";
+
+        //可见光相机用户名
+        [XmlElement(Type = typeof(string), ElementName = "OP_PSW_2")]
+        public string op_psw_2 = "12345";
+
+        // 报警温度
+        [XmlElement(Type = typeof(float), ElementName = "Alarm_2")]
+        public float alarm_2 = 100.0F;
+
+        #endregion
 
 
         //#region 1# 左上

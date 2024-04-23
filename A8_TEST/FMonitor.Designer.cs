@@ -73,6 +73,7 @@
             this.uiNavMenu1.Size = new System.Drawing.Size(250, 495);
             this.uiNavMenu1.TabIndex = 4;
             this.uiNavMenu1.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiNavMenu1.Visible = false;
             // 
             // FMonitor
             // 

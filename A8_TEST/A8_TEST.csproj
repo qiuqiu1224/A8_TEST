@@ -15,6 +15,7 @@
     <Deterministic>true</Deterministic>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>x64</PlatformTarget>
@@ -148,6 +149,7 @@
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
     </Compile>
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
@@ -170,12 +172,14 @@
     <Content Include="Resources\leftArrow1.png" />
     <Content Include="Resources\logo.png" />
     <Content Include="Resources\logo1.png" />
+    <Content Include="Resources\Minimize-2.png" />
     <Content Include="Resources\right.png" />
     <Content Include="Resources\rightArrow.png" />
     <Content Include="Resources\rightArrow1.png" />
     <Content Include="Resources\topArrow.png" />
     <Content Include="Resources\upArrow.png" />
     <Content Include="Resources\wall1.jpg" />
+    <Content Include="Resources\关闭%281%29.png" />
     <Content Include="Resources\右箭头.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
