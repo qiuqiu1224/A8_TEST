@@ -16,7 +16,11 @@ namespace A8_TEST
         [XmlElement(Type = typeof(int), ElementName = "DeviceCount")]
         public int deviceCount = 2;
 
-        # region 设备1
+        #region 设备1
+        //设备名称
+        [XmlElement(Type = typeof(string), ElementName = "DeviceName_1")]
+        public string deviceName_1 = "设备1";
+
         //红外相机IP地址
         [XmlElement(Type = typeof(string), ElementName = "IR_IP_1")]
         public string ir_ip_1 = "192.168.1.80";
@@ -44,6 +48,10 @@ namespace A8_TEST
         #endregion
 
         #region 设备2
+        //设备名称
+        [XmlElement(Type = typeof(string), ElementName = "DeviceName_2")]
+        public string deviceName_2 = "设备2";
+
         //红外相机IP地址
         [XmlElement(Type = typeof(string), ElementName = "IR_IP_2")]
         public string ir_ip_2 = "192.168.1.80";

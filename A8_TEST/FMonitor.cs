@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,6 +14,7 @@ namespace A8_TEST
 {
     public partial class FMonitor : UIPage
     {
+     
         public FMonitor()
         {
             InitializeComponent();
@@ -28,6 +30,20 @@ namespace A8_TEST
         private void ToolStripButton1_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private void StartPrewviewBtn_MouseHover(object sender, EventArgs e)
+        {          
+            startPrewviewBtn.Image = Image.FromFile(Globals.startPathInfo.Parent.Parent.FullName + "\\Resources\\" + "开始(1).png");
+        }
+
+
+
+        private void StopPrewviewBtn_Click(object sender, EventArgs e)
+        {
+            //isStartPrewview = false;
+            //DirectoryInfo path = new DirectoryInfo(Application.StartupPath);
+            //startPrewviewBtn.Image = Image.FromFile(path.Parent.Parent.FullName + "\\Resources\\" + "开始 .png");
         }
     }
 }

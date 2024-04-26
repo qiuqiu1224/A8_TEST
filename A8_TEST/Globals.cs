@@ -21,6 +21,11 @@ namespace A8_TEST
 
         public static string systemXml = Application.StartupPath + "\\SystemSetting.xml";
 
+        public static FileInfo[] fileInfos;
+
+        public static DirectoryInfo startPathInfo = new DirectoryInfo(Application.StartupPath);
+
+
         public static bool ReadInfoXml<T>(ref T Info, string fileName)
         {
             try
@@ -104,6 +109,13 @@ namespace A8_TEST
             }
             catch (Exception e)
             { }
+        }
+
+        public static void SortFolderByCreateTime(ref FileInfo[] files)
+        {
+            //倒叙排序，日期最新的在前面  10月19  10月18 10月17
+            Array.Sort(files, (FileInfo x, FileInfo y) =>
+             y.LastWriteTime.CompareTo(x.LastWriteTime));
         }
 
 

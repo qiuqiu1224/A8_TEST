@@ -114,6 +114,18 @@
     <Compile Include="FMonitor.designer.cs">
       <DependentUpon>FMonitor.cs</DependentUpon>
     </Compile>
+    <Compile Include="FormBrowse.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormBrowse.Designer.cs">
+      <DependentUpon>FormBrowse.cs</DependentUpon>
+    </Compile>
+    <Compile Include="FormImageView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormImageView.Designer.cs">
+      <DependentUpon>FormImageView.cs</DependentUpon>
+    </Compile>
     <Compile Include="FormMain.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -132,11 +144,23 @@
     <Compile Include="Rtsplz.cs" />
     <Compile Include="SystemParam.cs" />
     <Compile Include="tstRtmp.cs" />
+    <Compile Include="UserControl1.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="UserControl1.Designer.cs">
+      <DependentUpon>UserControl1.cs</DependentUpon>
+    </Compile>
     <EmbeddedResource Include="FMonitor.resx">
       <DependentUpon>FMonitor.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Form2.resx">
       <DependentUpon>Form2.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FormBrowse.resx">
+      <DependentUpon>FormBrowse.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FormImageView.resx">
+      <DependentUpon>FormImageView.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="FormMain.resx">
       <DependentUpon>FormMain.cs</DependentUpon>
@@ -151,6 +175,9 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
+    <EmbeddedResource Include="UserControl1.resx">
+      <DependentUpon>UserControl1.cs</DependentUpon>
+    </EmbeddedResource>
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>

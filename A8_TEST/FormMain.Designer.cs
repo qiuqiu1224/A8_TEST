@@ -36,7 +36,7 @@ namespace A8_TEST
             this.button2 = new System.Windows.Forms.Button();
             this.uiNavBar1 = new Sunny.UI.UINavBar();
             this.pictureBox3 = new System.Windows.Forms.PictureBox();
-            this.pictureBox2 = new System.Windows.Forms.PictureBox();
+            this.closePictureBox2 = new System.Windows.Forms.PictureBox();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.uiTabControl1 = new Sunny.UI.UITabControl();
             this.tabPage2 = new System.Windows.Forms.TabPage();
@@ -44,10 +44,11 @@ namespace A8_TEST
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.timer2 = new System.Windows.Forms.Timer(this.components);
             this.timer3 = new System.Windows.Forms.Timer(this.components);
+            this.uiToolTip1 = new Sunny.UI.UIToolTip(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.pic)).BeginInit();
             this.uiNavBar1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox3)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.closePictureBox2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.uiTabControl1.SuspendLayout();
             this.SuspendLayout();
@@ -86,7 +87,7 @@ namespace A8_TEST
             // 
             this.uiNavBar1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(21)))), ((int)(((byte)(22)))), ((int)(((byte)(27)))));
             this.uiNavBar1.Controls.Add(this.pictureBox3);
-            this.uiNavBar1.Controls.Add(this.pictureBox2);
+            this.uiNavBar1.Controls.Add(this.closePictureBox2);
             this.uiNavBar1.Controls.Add(this.pictureBox1);
             this.uiNavBar1.Dock = System.Windows.Forms.DockStyle.Top;
             this.uiNavBar1.DropMenuFont = new System.Drawing.Font("宋体", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
@@ -101,6 +102,7 @@ namespace A8_TEST
             this.uiNavBar1.Size = new System.Drawing.Size(1235, 49);
             this.uiNavBar1.TabIndex = 3;
             this.uiNavBar1.Text = "uiNavBar1";
+            this.uiNavBar1.MenuItemClick += new Sunny.UI.UINavBar.OnMenuItemClick(this.UiNavBar1_MenuItemClick);
             // 
             // pictureBox3
             // 
@@ -115,18 +117,18 @@ namespace A8_TEST
             this.pictureBox3.TabStop = false;
             this.pictureBox3.Click += new System.EventHandler(this.PictureBox3_Click);
             // 
-            // pictureBox2
+            // closePictureBox2
             // 
-            this.pictureBox2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.pictureBox2.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None;
-            this.pictureBox2.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox2.Image")));
-            this.pictureBox2.Location = new System.Drawing.Point(1191, 12);
-            this.pictureBox2.Name = "pictureBox2";
-            this.pictureBox2.Size = new System.Drawing.Size(32, 32);
-            this.pictureBox2.SizeMode = System.Windows.Forms.PictureBoxSizeMode.CenterImage;
-            this.pictureBox2.TabIndex = 2;
-            this.pictureBox2.TabStop = false;
-            this.pictureBox2.Click += new System.EventHandler(this.PictureBox2_Click);
+            this.closePictureBox2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.closePictureBox2.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None;
+            this.closePictureBox2.Image = ((System.Drawing.Image)(resources.GetObject("closePictureBox2.Image")));
+            this.closePictureBox2.Location = new System.Drawing.Point(1191, 12);
+            this.closePictureBox2.Name = "closePictureBox2";
+            this.closePictureBox2.Size = new System.Drawing.Size(32, 32);
+            this.closePictureBox2.SizeMode = System.Windows.Forms.PictureBoxSizeMode.CenterImage;
+            this.closePictureBox2.TabIndex = 2;
+            this.closePictureBox2.TabStop = false;
+            this.closePictureBox2.Click += new System.EventHandler(this.PictureBox2_Click);
             // 
             // pictureBox1
             // 
@@ -191,6 +193,14 @@ namespace A8_TEST
             this.timer3.Interval = 2000;
             this.timer3.Tick += new System.EventHandler(this.Timer3_Tick);
             // 
+            // uiToolTip1
+            // 
+            this.uiToolTip1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(54)))), ((int)(((byte)(54)))), ((int)(((byte)(54)))));
+            this.uiToolTip1.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiToolTip1.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.uiToolTip1.OwnerDraw = true;
+            this.uiToolTip1.RectColor = System.Drawing.Color.Transparent;
+            // 
             // FormMain
             // 
             this.AllowShowTitle = false;
@@ -214,7 +224,7 @@ namespace A8_TEST
             ((System.ComponentModel.ISupportInitialize)(this.pic)).EndInit();
             this.uiNavBar1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox3)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.closePictureBox2)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.uiTabControl1.ResumeLayout(false);
             this.ResumeLayout(false);
@@ -234,8 +244,9 @@ namespace A8_TEST
         private System.Windows.Forms.Timer timer1;
         private System.Windows.Forms.Timer timer2;
         private System.Windows.Forms.Timer timer3;
-        private System.Windows.Forms.PictureBox pictureBox2;
+        private System.Windows.Forms.PictureBox closePictureBox2;
         private System.Windows.Forms.PictureBox pictureBox3;
+        private Sunny.UI.UIToolTip uiToolTip1;
     }
 }
 
