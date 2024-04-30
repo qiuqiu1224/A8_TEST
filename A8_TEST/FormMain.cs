@@ -14,6 +14,8 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Sunny.UI;
 using System.Runtime.InteropServices;
+using System.Net.Sockets;
+using System.Net;
 
 namespace A8_TEST
 {
@@ -31,8 +33,32 @@ namespace A8_TEST
                                // private UIPanel pixUIPanel;//容纳PictureBox的Panel
                                //public static TransparentLabel[] labels;//图像上面标注控件,背景透明
 
-        UISymbolButton startPrewviewBtn, stopPrewviewBtn;
+        UISymbolButton startPrewviewBtn, stopPrewviewBtn, startRecordBtn, stopRecordBtn, mouseFollowBtn;
         private bool isStartPrewview = false;//开始采集标志
+        List<Socket> sockets = new List<Socket>();//连接红外相机socket
+        private delegate string ConnectSocketDelegate(IPEndPoint ipep, Socket sock);
+        List<Thread> threadsReceiveTmp = new List<Thread>();//接收温度数据线程
+        //private int[,] realTemp;
+        private List<int[,]> realTemps = new List<int[,]>();//存储温度数据
+        //接收数据缓存
+        private List<byte[]> dataBuffers = new List<byte[]>();
+        //从dataBuffer已经存了多少个字节数据
+        private List<int> contentSizes = new List<int>();
+        private List<bool> receiveFlags = new List<bool>();
+        private List<bool> socketReceiveFlags = new List<bool>();
+
+        private bool saveVideoFlag = false;//录制视频标志
+        private bool mouseFollowFlag = false;//鼠标跟随标志
+
+
+        List<int> picMouseX = new List<int>();//鼠标跟随x坐标
+        List<int> picMouseY = new List<int>();//鼠标跟随y坐标
+        List<float> tempMouseX = new List<float>();//鼠标跟随对应温度数组x坐标
+        List<float> tempMouseY = new List<float>();//鼠标跟随对应温度数组y坐标
+
+        string recordName;//录制视频文件名
+        VideoWriter writer;//存储视频对象
+        private bool isInPic;//判断鼠标是否在图像内的标志
 
         #region 红外
         tstRtmp rtmp = new tstRtmp();//利用ffmpeg获取视频数据
@@ -48,6 +74,7 @@ namespace A8_TEST
         List<Bitmap>[] irImageLists;//存储红外图像集合
         List<string> ipList = new List<string>();//红外设备ip集合
         List<bool> isShowIRImageFlags = new List<bool>();//显示红外图像标志
+        float pt = 2.0f; //显示水平缩放比例温度数据是384 * 288，视频图像768 * 576   
 
         #endregion
 
@@ -162,9 +189,174 @@ namespace A8_TEST
             stopPrewviewBtn.MouseHover += new EventHandler(StopPrewviewBtn_MouseHover);
             stopPrewviewBtn.MouseLeave += new EventHandler(StopPrewviewBtn_MouseLeave);
 
+            //获取Fmonitor界面开始录制视频按钮，并添加相关事件
+            startRecordBtn = (UISymbolButton)fmonitor.GetControl("startRecordBtn");
+            startRecordBtn.Click += new EventHandler(StartRecordBtn_Click);
+            startRecordBtn.MouseHover += new EventHandler(StartRecordBtn_MouseHover);
+            startRecordBtn.MouseLeave += new EventHandler(StartRecordBtn_MouseLeave);
+
+            //获取Fmoitor界面停止录制视频按钮，并添加相关事件
+            stopRecordBtn = (UISymbolButton)fmonitor.GetControl("stopRecordBtn");
+            stopRecordBtn.Click += new EventHandler(StopRecordBtn_Click);
+            stopRecordBtn.MouseHover += new EventHandler(stopRecordBtn_MouseHover);
+            stopRecordBtn.MouseLeave += new EventHandler(stopRecordBtn_MouseLeave);
+
+            //获取Fmoitor界面鼠标跟随按钮，并添加相关事件
+            mouseFollowBtn = (UISymbolButton)fmonitor.GetControl("mouseFollowBtn");
+            mouseFollowBtn.Click += new EventHandler(mouseFollowBtn_Click);
+            mouseFollowBtn.MouseHover += new EventHandler(mouseFollowBtn_MouseHover);
+            mouseFollowBtn.MouseLeave += new EventHandler(mouseFollowBtn_MouseLeave);
+
             //为按钮添加提示信息
             uiToolTip1.SetToolTip(startPrewviewBtn, "开始采集");
             uiToolTip1.SetToolTip(stopPrewviewBtn, "停止采集");
+            uiToolTip1.SetToolTip(startRecordBtn, "开始录制");
+            uiToolTip1.SetToolTip(stopRecordBtn, "停止录制");
+            uiToolTip1.SetToolTip(mouseFollowBtn, "鼠标跟随");
+
+        }
+
+        /// <summary>
+        /// 设置按钮图片
+        /// </summary>
+        /// <param name="btn"></param>
+        /// <param name="imageName"></param>
+        private void SetButtonImg(UISymbolButton btn, string imageName)
+        {
+            btn.Image = Image.FromFile(Globals.startPathInfo.Parent.Parent.FullName + "\\Resources\\" + imageName);
+        }
+
+        /// <summary>
+        ///  鼠标跟随按钮鼠标离开控件事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void mouseFollowBtn_MouseLeave(object sender, EventArgs e)
+        {
+
+            if (!mouseFollowFlag)
+            {
+                SetButtonImg(mouseFollowBtn, "鼠标跟随.png");
+            }
+        }
+
+        /// <summary>
+        /// 鼠标跟随按钮鼠标在控件内事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void mouseFollowBtn_MouseHover(object sender, EventArgs e)
+        {
+            SetButtonImg(mouseFollowBtn, "鼠标跟随1.png");
+        }
+
+        /// <summary>
+        /// 鼠标跟随按钮点击事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void mouseFollowBtn_Click(object sender, EventArgs e)
+        {
+            //没有开始采集，返回
+            if (!isStartPrewview)
+            {
+                return;
+            }
+
+            if (!mouseFollowFlag)
+            {
+                mouseFollowFlag = true;
+                SetButtonImg(mouseFollowBtn, "鼠标跟随1.png");
+            }
+            else
+            {
+                mouseFollowFlag = false;
+                SetButtonImg(mouseFollowBtn, "鼠标跟随.png");
+            }
+        }
+
+        /// <summary>
+        /// 停止录制视频按钮鼠标离开控件事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void stopRecordBtn_MouseLeave(object sender, EventArgs e)
+        {
+            SetButtonImg(stopRecordBtn, "停止录制.png");
+        }
+
+        /// <summary>
+        ///  鼠标跟随按钮停止录制视频按钮鼠标在控件内事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void stopRecordBtn_MouseHover(object sender, EventArgs e)
+        {
+            SetButtonImg(stopRecordBtn, "停止录制1.png");
+        }
+
+        /// <summary>
+        ///  开始录制视频按钮鼠标离开控件事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void StartRecordBtn_MouseLeave(object sender, EventArgs e)
+        {
+            if (!saveVideoFlag)
+            {
+                SetButtonImg(startRecordBtn, "开始录制-line.png");
+            }
+        }
+
+        /// <summary>
+        ///  开始录制视频鼠标在控件内事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void StartRecordBtn_MouseHover(object sender, EventArgs e)
+        {
+            SetButtonImg(startRecordBtn, "开始录制-line(1).png");
+        }
+
+        /// <summary>
+        /// 停止录制视频按钮点击事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void StopRecordBtn_Click(object sender, EventArgs e)
+        {
+            if (saveVideoFlag)
+            {
+                saveVideoFlag = false;
+                SetButtonImg(startRecordBtn, "开始录制-line.png");
+            }
+        }
+
+        /// <summary>
+        /// 开始录制视频按钮点击事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void StartRecordBtn_Click(object sender, EventArgs e)
+        {
+            if (!isStartPrewview)
+            {
+                return;
+            }
+            if (!saveVideoFlag)
+            {
+
+                string filePath = saveFilePath();
+                if (filePath == "")
+                {
+                    return;
+                }
+                recordName = filePath + ".avi";
+                //利用VideoWriter对象 录制视频  红外视频帧频25HZ，分辨率768*576      
+                writer = new VideoWriter(recordName, FourCC.MJPG, 20, new OpenCvSharp.Size(768, 576), true);
+                saveVideoFlag = true;
+            }
+            SetButtonImg(startRecordBtn, "开始录制-line(1).png");
         }
 
         /// <summary>
@@ -174,7 +366,7 @@ namespace A8_TEST
         /// <param name="e"></param>
         private void StopPrewviewBtn_MouseLeave(object sender, EventArgs e)
         {
-            stopPrewviewBtn.Image = Image.FromFile(Globals.startPathInfo.Parent.Parent.FullName + "\\Resources\\" + "stop.png");
+            SetButtonImg(stopPrewviewBtn, "stop.png");            
         }
 
         /// <summary>
@@ -184,7 +376,7 @@ namespace A8_TEST
         /// <param name="e"></param>
         private void StopPrewviewBtn_MouseHover(object sender, EventArgs e)
         {
-            stopPrewviewBtn.Image = Image.FromFile(Globals.startPathInfo.Parent.Parent.FullName + "\\Resources\\" + "stopPressed.png");
+            SetButtonImg(stopPrewviewBtn, "stopPressed.png");           
         }
 
         /// <summary>
@@ -194,7 +386,7 @@ namespace A8_TEST
         /// <param name="e"></param>
         private void StartPrewviewBtn_MouseHover(object sender, EventArgs e)
         {
-            startPrewviewBtn.Image = Image.FromFile(Globals.startPathInfo.Parent.Parent.FullName + "\\Resources\\" + "开始(1).png");
+            SetButtonImg(startPrewviewBtn, "开始(1).png");            
         }
 
         /// <summary>
@@ -206,7 +398,7 @@ namespace A8_TEST
         {
             if (!isStartPrewview)
             {
-                startPrewviewBtn.Image = Image.FromFile(Globals.startPathInfo.Parent.Parent.FullName + "\\Resources\\" + "开始 .png");
+                SetButtonImg(startPrewviewBtn, "开始 .png");
             }
         }
 
@@ -220,6 +412,8 @@ namespace A8_TEST
             {
                 return;
             }
+
+            ConnectSocketToReceiveTemp(0);
 
             isStartPrewview = true;//设置开始采集标志为true
 
@@ -235,6 +429,8 @@ namespace A8_TEST
             ////开启红外图像预览线程
             PreviewIRImage(0);
 
+            SetButtonImg(startPrewviewBtn, "开始(1).png");          
+
             //设备校时
             Timing();
         }
@@ -244,11 +440,13 @@ namespace A8_TEST
         /// </summary>
         private void StopPrewview()
         {
-            isStartPrewview = false;//设置停止采集标志位false
+            isStartPrewview = false;//设置停止采集标志位false   
+            saveVideoFlag = false;
 
             for (int i = 0; i < Globals.systemParam.deviceCount; i++)
             {
                 isShowIRImageFlags[i] = false;//设置显示红外图像标志
+                socketReceiveFlags[i] = false;
 
                 //如果已经登录光学设备，登出，同时设置userId为-1
                 if (mUserIDs[i] >= 0)
@@ -275,6 +473,7 @@ namespace A8_TEST
 
             //设置监控界面功能按钮的图像
             SetMonitorFucBtnImg("开始 .png", "stopPressed.png");
+            SetButtonImg(startRecordBtn, "开始录制-line.png");        
         }
 
         /// <summary>
@@ -561,8 +760,7 @@ namespace A8_TEST
         /// </summary>
         private void ShowIRImageThreadProc(object deviceNum)
         {
-            //利用VideoWriter对象 录制视频  红外视频帧频25HZ，分辨率768*576      
-            VideoWriter writer = new VideoWriter("output_video.avi", FourCC.XVID, 25, new OpenCvSharp.Size(768, 576), true);
+
             int i = 0;
             int j = 0;
             int num = (int)deviceNum;
@@ -576,11 +774,13 @@ namespace A8_TEST
                         //this.Invoke(new MethodInvoker(() =>
                         //{
                         Bitmap bitmap = (Bitmap)irImageLists[num][0].Clone();
+                        Console.WriteLine("bitmap.Width" + bitmap.Width);
 
                         if (bitmap != null)
                         {
                             using (Graphics gfx = Graphics.FromImage(bitmap))
                             {
+
                                 Font font = new Font("Arial", 14);
                                 //SolidBrush solidBrush = new SolidBrush(Color.FromArgb(205,51,51)) ;
                                 Brush brush = Brushes.LightGreen;
@@ -588,7 +788,6 @@ namespace A8_TEST
 
                                 string maxTemp;
                                 PointF point;
-                                float pt = 2.0f; //显示水平缩放比例温度数据是384 * 288，视频图像768 * 576      
 
                                 maxTemp = ((float)globa_Temps[num].max_temp / 10).ToString("F1");//全局最高温度，保留一位小数
                                 float max = float.Parse(maxTemp);
@@ -617,7 +816,7 @@ namespace A8_TEST
                                     saveAlarmImageFlag = false;
 
                                 }
-
+                                //Console.WriteLine("maxTempX = " + globa_Temps[num].max_temp_x + "maxTempY" + globa_Temps[num].max_temp_y);
                                 float maxTempX = globa_Temps[num].max_temp_x * pt;
                                 float maxTempY = globa_Temps[num].max_temp_y * pt;
 
@@ -643,13 +842,13 @@ namespace A8_TEST
                                 //图像上绘制十字标记
                                 DrawCrossLine(gfx, globa_Temps[num].max_temp_x * pt, globa_Temps[num].max_temp_y * pt, pen, 10);
 
-
                                 if (saveImageFlag)
                                 {
                                     string IrImagePath = GetIrImageFilePath(Globals.ImageDirectoryPath, 0);
                                     bitmap.Save(IrImagePath, System.Drawing.Imaging.ImageFormat.Bmp);
                                     saveImageFlag = false;
                                 }
+
 
                                 //保存报警图像
                                 if (saveAlarmImageFlag)
@@ -673,17 +872,57 @@ namespace A8_TEST
                                     saveAlarmImageFlag = false;
 
                                 }
+
+                                Bitmap b = (Bitmap)bitmap.Clone();
                                 pics[num].Image = bitmap;
-                                //    // 保存Bitmap到文件
-                                //    //bmp.Save(@"C:\Users\Dell\Desktop\1.png", System.Drawing.Imaging.ImageFormat.Png);
 
-                                //    if (saveVideoFlag)
-                                //    {
-                                //        Console.WriteLine(writer.IsOpened());
-                                //        Mat mat = Bitmap2Mat(bmp);
-                                //        writer.Write(mat);
-                                //    }
 
+                                //鼠标跟随
+                                if (mouseFollowFlag)
+                                {
+                                    //鼠标在图像内
+                                    if (isInPic)
+                                    {
+                                        float tempX = picMouseX[num];
+                                        float tempY = picMouseY[num];
+                                        string temp = (realTemps[0][(int)tempMouseX[num], (int)tempMouseY[num]] * 1.0f / 10).ToString("F1");
+                                        SizeF tempStringSize = gfx.MeasureString(temp, font);
+
+                                        float locX = tempX * 1.0f / pics[num].Width * b.Width;
+                                        float locY = tempY * 1.0f / pics[num].Height * b.Height;
+
+                                        ////超出边界，调整显示位置
+                                        if (locX + tempStringSize.Width > b.Width)
+                                        {
+                                            locX = locX - tempStringSize.Width - 10;
+                                        }
+
+                                        if (locY + tempStringSize.Height > b.Height)
+                                        {
+                                            locY = locY - tempStringSize.Height - 10;
+                                        }
+
+                                        gfx.DrawString(temp, font, brush, locX + 10, locY + 10);
+                                    }
+                                }
+
+                                //保存红外视频
+                                if (saveVideoFlag)
+                                {
+                                    try
+                                    {
+                                        Console.WriteLine(writer.IsOpened());
+                                        var mat = BitmapConverter.ToMat(b);
+                                        ///Mat mat = Bitmap2Mat(bitmap);
+                                        writer.Write(mat);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        MessageBox.Show("录制视频失败" + ex.ToString());
+                                    }
+                                }
+
+                                b = null;
                                 bitmap = null;
 
                             }
@@ -703,7 +942,7 @@ namespace A8_TEST
                 {
                     Console.WriteLine(ex.ToString());
                 }
-                Thread.Sleep(40);
+                Thread.Sleep(50);
             }
         }
 
@@ -768,6 +1007,27 @@ namespace A8_TEST
                 RealDatas.Add(null);
 
                 isShowIRImageFlags.Add(false);
+
+                sockets.Add(null);
+
+                dataBuffers.Add(new byte[1024 * 1024 * 2]);
+
+                contentSizes.Add(0);
+
+                realTemps.Add(null);
+
+                threadsReceiveTmp.Add(null);
+
+                receiveFlags.Add(false);
+
+                socketReceiveFlags.Add(false);
+
+                picMouseX.Add(0);
+
+                picMouseY.Add(0);
+
+                tempMouseX.Add(0.0f);
+                tempMouseY.Add(0.0f);
 
             }
 
@@ -842,7 +1102,6 @@ namespace A8_TEST
                     //pics[i * 2 + j].Name = "pic" + (i * 2 + j).ToString();
                     pics[i * 2 + j].SizeMode = PictureBoxSizeMode.StretchImage;
 
-
                     fmonitor.Controls.Add(pics[i * 2 + j]);
 
                     //labels[i * 2 + j] = new TransparentLabel();
@@ -858,30 +1117,34 @@ namespace A8_TEST
                     ////label.Parent = fmonitor;
                     //labels[i * 2 + j].BringToFront();
 
-                    //switch (i * 2 + j)
-                    //{
-                    //    case 0:
-                    //        pics[i * 2 + j].Tag = 0;
-                    //        pics[i * 2 + j].Paint += new PaintEventHandler(Pics0_Paint);
-                    //        pics[i * 2 + j].Click += new EventHandler(Pics0_Click);
-                    //        break;
-                    //    case 1:
-                    //        pics[i * 2 + j].Tag = 0;
-                    //        pics[i * 2 + j].Paint += new PaintEventHandler(Pics1_Paint);
-                    //        pics[i * 2 + j].Click += new EventHandler(Pics1_Click);
-                    //        break;
-                    //    case 2:
-                    //        pics[i * 2 + j].Tag = 0;
-                    //        pics[i * 2 + j].Paint += new PaintEventHandler(Pics2_Paint);
-                    //        pics[i * 2 + j].Click += new EventHandler(Pics2_Click);
-                    //        break;
-                    //    case 3:
-                    //        pics[i * 2 + j].Tag = 0;
-                    //        pics[i * 2 + j].Paint += new PaintEventHandler(Pics3_Paint);
-                    //        pics[i * 2 + j].Click += new EventHandler(Pics3_Click);
-                    //        break;
+                    switch (i * 2 + j)
+                    {
+                        case 0:
+                            //pics[i * 2 + j].Tag = 0;
+                            //pics[i * 2 + j].Paint += new PaintEventHandler(Pics0_Paint);
+                            //pics[i * 2 + j].Click += new EventHandler(Pics0_Click);
 
-                    //}
+                            pics[i * 2 + j].MouseMove += new MouseEventHandler(Pics0_MouseMove);
+                            pics[i * 2 + j].MouseLeave += new EventHandler(Pics0_MouseLeave);
+                            pics[i * 2 + j].MouseHover += new EventHandler(Pics0_MouseHover);
+                            break;
+                        case 1:
+                            //pics[i * 2 + j].Tag = 0;
+                            //pics[i * 2 + j].Paint += new PaintEventHandler(Pics1_Paint);
+                            //pics[i * 2 + j].Click += new EventHandler(Pics1_Click);
+                            break;
+                        case 2:
+                            //pics[i * 2 + j].Tag = 0;
+                            //pics[i * 2 + j].Paint += new PaintEventHandler(Pics2_Paint);
+                            //pics[i * 2 + j].Click += new EventHandler(Pics2_Click);
+                            break;
+                        case 3:
+                            //pics[i * 2 + j].Tag = 0;
+                            //pics[i * 2 + j].Paint += new PaintEventHandler(Pics3_Paint);
+                            //pics[i * 2 + j].Click += new EventHandler(Pics3_Click);
+                            break;
+
+                    }
 
                 }
 
@@ -891,6 +1154,61 @@ namespace A8_TEST
             //{
             //    Console.WriteLine(p.Name);
             //}
+        }
+
+        private void Pics0_MouseLeave(object sender, EventArgs e)
+        {
+            //mouseFollowFlag = false;
+            isInPic = false;
+        }
+
+        private void Pics0_MouseHover(object sender, EventArgs e)
+        {
+            //this.uiToolTip1.SetToolTip(sender as PictureBox, "23.5");
+        }
+
+
+        private void Pics0_MouseMove(object sender, MouseEventArgs e)
+        {
+
+            if (!isStartPrewview)
+            {
+                return;
+            }
+
+            isInPic = true;
+            //Console.WriteLine("Pics0_MouseMove");
+
+            PictureBox pic = sender as PictureBox;
+            Console.WriteLine("pic.Width" + pic.Width);
+
+            //// 获取鼠标在PictureBox内的位置
+            ///
+
+            picMouseX[0] = e.X;
+            picMouseY[0] = e.Y;
+
+            tempMouseX[0] = picMouseX[0] * 1.0f / (pics[0].Width) * 384;
+            tempMouseY[0] = picMouseY[0] * 1.0f / (pics[0].Height) * 288;
+
+            //// PointF pointF = new PointF(x,y);
+
+            //string temp = (realTemps[0][(int)a, (int)b] * 1.0f / 10).ToString("F1");
+            ////mousePoints.Add(pointF);
+
+            ////Graphics g = pic.CreateGraphics();
+
+            ////g.DrawEllipse(Pens.Blue, 10, 10, 100, 100); // 绘制蓝色椭圆
+            ////g.Dispose();
+
+            //Console.WriteLine("x=" + x);
+            //Console.WriteLine("y= " + y);
+
+            //// 显示坐标（可以用ToolTip或其他方式显示）
+            //this.uiToolTip1.SetToolTip(pic, temp);
+
+
+
         }
 
         /// <summary>
@@ -1024,7 +1342,7 @@ namespace A8_TEST
                     }
                 };
                 //Console.WriteLine(ipList[0]);
-                rtmp.Start(show, "rtsp://" + ipList[0] + "/webcam");
+                rtmp.Start(show, "rtsp://" + ipList[num] + "/webcam");
                 //rtmp.Start(show, "rtsp://192.168.1.80/webcam");
             }
             catch (Exception ex)
@@ -1346,22 +1664,36 @@ namespace A8_TEST
         private void PictureBox2_Click(object sender, EventArgs e)
         {
 
-            for (int i = 0; i < Globals.systemParam.deviceCount; i++)
+            try
             {
-                isShowIRImageFlags[i] = false;
-
-                if (mUserIDs[i] >= 0)
+                for (int i = 0; i < Globals.systemParam.deviceCount; i++)
                 {
-                    CHCNetSDK.NET_DVR_Logout(mUserIDs[i]);
-                    mUserIDs[i] = -1;
+                    if (sockets[i] != null)
+                    {
+                        sockets[i].Close();
+                    }
+
+                    isShowIRImageFlags[i] = false;
+                    socketReceiveFlags[i] = false;
+
+                    if (mUserIDs[i] >= 0)
+                    {
+                        CHCNetSDK.NET_DVR_Logout(mUserIDs[i]);
+                        mUserIDs[i] = -1;
+
+                    }
+
+                    if (mRealHandles[i] >= 0)
+                    {
+                        CHCNetSDK.NET_DVR_StopRealPlay(mRealHandles[i]);
+                        mRealHandles[i] = -1;
+                    }
 
                 }
-
-                if (mRealHandles[i] >= 0)
-                {
-                    CHCNetSDK.NET_DVR_StopRealPlay(mRealHandles[i]);
-                    mRealHandles[i] = -1;
-                }
+            }
+            catch (Exception ex)
+            {
+                Globals.Log("关闭窗口" + ex.ToString());
             }
 
             Globals.fileInfos = null;
@@ -1395,6 +1727,237 @@ namespace A8_TEST
         {
             startPrewviewBtn.Image = Image.FromFile(Globals.startPathInfo.Parent.Parent.FullName + "\\Resources\\" + startBtnImgName);
             stopPrewviewBtn.Image = Image.FromFile(Globals.startPathInfo.Parent.Parent.FullName + "\\Resources\\" + stopBtnImgName);
+        }
+
+
+        private string ConnectSocket(IPEndPoint ipep, Socket sock)
+        {
+            string exmessage = "";
+            try
+            {
+                sock.Connect(ipep);
+            }
+            catch (System.Exception ex)
+            {
+                exmessage = ex.Message;
+            }
+            finally
+            {
+            }
+
+            return exmessage;
+        }
+
+        /// <summary>
+        /// 基于TCP协议的原始温度数据
+        /// </summary>
+        /// <param name="deviceNum"></param>
+        private void ConnectSocketToReceiveTemp(int deviceNum)
+        {
+
+            try
+            {
+                sockets[deviceNum] = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                IPAddress ip = IPAddress.Parse(ipList[deviceNum]);
+                IPEndPoint point = new IPEndPoint(ip, Convert.ToInt32("8081"));
+
+                ConnectSocketDelegate connect = ConnectSocket;
+                IAsyncResult asyncResult = connect.BeginInvoke(point, sockets[deviceNum], null, null);
+
+
+                bool connectSuccess = asyncResult.AsyncWaitHandle.WaitOne(1000, false);
+                if (!connectSuccess)
+                {
+                    Globals.Log("设备" + deviceNum + "连接超时");
+                    return;
+                }
+
+                string exmessage = connect.EndInvoke(asyncResult);
+                if (!string.IsNullOrEmpty(exmessage))
+                {
+                    Globals.Log("设备" + deviceNum + "连接失败" + "错误信息：" + exmessage);
+                }
+                else
+                {
+                    threadsReceiveTmp[deviceNum] = new Thread(new ParameterizedThreadStart(Receive));
+                    threadsReceiveTmp[deviceNum].IsBackground = true;
+                    threadsReceiveTmp[deviceNum].Start(deviceNum);
+                    socketReceiveFlags[deviceNum] = true;
+                }
+            }
+            catch (Exception e)
+            {
+                Globals.Log("设备" + deviceNum + "连接失败" + e.ToString());
+            }
+        }
+
+        private void ByteToInt16(Byte[] arrByte, int nByteCount, ref Int16[] destInt16Arr)
+        {
+            //按两个字节⼀个整数解析，前⼀字节当做整数⾼位，后⼀字节当做整数低位
+            //for (int i = 0; i < nByteCount / 2; i++)
+            //{
+            //    destInt16Arr[i] = Convert.ToInt16(arrByte[2 * i + 0] << 8 + arrByte[2 * i + 1]);
+            //}
+            int i = 0;
+            try
+            {
+                //按两个字节一个整数解析，前一字节当做整数低位，后一字节当做整数高位，调用系统函数转化
+                for (i = 0; i < nByteCount / 2; i++)
+                {
+                    Byte[] tmpBytes = new Byte[2] { arrByte[2 * i + 0], arrByte[2 * i + 1] };
+                    destInt16Arr[i] = BitConverter.ToInt16(tmpBytes, 0);
+                }
+            }
+            catch (Exception e)
+            {
+                //MessageBox.Show("Byte to Int16转化错误！i=" + e.Message + i.ToString());
+            }
+
+        }
+
+        private void FormMain_Load(object sender, EventArgs e)
+        {
+            this.DoubleBuffered = true;
+        }
+
+        private void UiButton1_Click_1(object sender, EventArgs e)
+        {
+            if (saveVideoFlag)
+            {
+                saveVideoFlag = false;
+            }
+        }
+
+        private string saveFilePath()
+        {
+            string filePath = "";
+            // 创建保存对话框
+            SaveFileDialog saveDataSend = new SaveFileDialog();
+            saveDataSend.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);   // 获取文件路径
+            if (saveDataSend.ShowDialog() == DialogResult.OK)   // 显示文件框，并且选择文件
+            {
+                filePath = saveDataSend.FileName.Replace("\\", "/");   // 获取文件名
+            }
+            return filePath;
+
+        }
+
+        private void Receive(object deviceNum)
+        {
+            int num = (int)deviceNum;
+            int com_temp;
+            //double min, max, avg;
+            //int maxx, maxy, minx, miny;
+            try
+            {
+                while (socketReceiveFlags[num])
+                {
+                    // a8Lists[num].Get_comp_temp(out com_temp);
+                    //Console.WriteLine("设备温补" + com_temp);
+
+
+                    byte[] buffer = new byte[1024 * 1024];
+                    int r = sockets[num].Receive(buffer);
+                    //Console.WriteLine("读取到数据");
+                    //Console.WriteLine(r);
+
+
+                    if (r == 0)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        Array.Copy(buffer, 0, dataBuffers[num], contentSizes[num], r);
+
+                        if (dataBuffers[num][0] == 43 && dataBuffers[num][1] == 84 && dataBuffers[num][2] == 69 && dataBuffers[num][3] == 77 && dataBuffers[num][4] == 80)
+                        {
+                            receiveFlags[num] = true;
+                            //存了数据个数
+                            contentSizes[num] = contentSizes[num] + r;
+                            //Console.WriteLine("目前存储数据");
+                            //Console.WriteLine(contentSizes[num]);
+                        }
+                        else
+                        {
+                            receiveFlags[num] = false;
+                            contentSizes[num] = 0;
+                            Array.Clear(dataBuffers[num], 0, dataBuffers[num].Length);
+
+                        }
+                        //dataBuffer
+                        if (receiveFlags[num])
+                        {
+
+                            //int min, max, avg;
+                            byte[] Lbuffer = new byte[4];
+                            Array.Copy(dataBuffers[num], 8, Lbuffer, 0, 4);
+                            int bodySize = BitConverter.ToInt32(Lbuffer, 0);//从包头里面分析出包体的长度
+                            //Console.WriteLine("包体长度");
+                            //Console.WriteLine(bodySize);
+                            ////缓存区小于9个字节，表示连表头都无法解析
+                            //if (contentSize <= 9) return;
+                            ////缓存区中的数据，不够解析一条完整的数据
+                            //if (contentSize - 9 < bodySize) return;
+
+                            if (contentSizes[num] <= 24 || contentSizes[num] - 24 < bodySize)
+                            {
+
+                            }
+                            else
+                            {
+                                if (dataBuffers[num][0] == 43 && dataBuffers[num][1] == 84 && dataBuffers[num][2] == 69 && dataBuffers[num][3] == 77 && dataBuffers[num][4] == 80)
+                                {
+
+                                    byte[] Cbuffer = new byte[bodySize];
+                                    Array.Copy(dataBuffers[num], 24, Cbuffer, 0, bodySize);
+
+                                    Int16[] tempdate = new Int16[384 * 288];
+                                    ByteToInt16(Cbuffer, Cbuffer.Length, ref tempdate);
+                                    //realTemp = new int[256, 192];
+                                    realTemps[num] = new int[384, 288];
+                                    for (int i = 0; i < 384; i++)
+                                    {
+                                        for (int j = 0; j < 288; j++)
+                                        {
+                                            // ShortToUnsignedInt
+                                            //realTemp[i][j] = (0xff & tempData[j * infraredImageWidth + i]) | (0xff00 & (tempData[j * infraredImageWidth + i + infraredImageWidth * infraredImageHeight] << 8)) & 0xffff;
+
+                                            realTemps[num][i, j] = tempdate[j * 384 + i];
+
+
+                                        }
+                                    }
+                                    double f = realTemps[num][321, 0] / 10.0f;
+                                    //SetValue((Convert.ToString(f)));
+                                    string s = f.ToString("F1");
+                                    //Convert.ToString(f);
+                                    //Console.WriteLine("(100,100)温度" + s);
+                                    //MessageBox.Show(s);
+                                    //把剩余的数据Copy到缓存区头部位置
+                                    Array.Copy(dataBuffers[num], 24 + bodySize, dataBuffers[num], 0, contentSizes[num] - 24 - bodySize);
+                                    contentSizes[num] = contentSizes[num] - 24 - bodySize;
+
+                                    byte[] Testbuffer = new byte[contentSizes[num]];
+                                    Array.Copy(dataBuffers[num], 0, Testbuffer, 0, contentSizes[num]);
+
+                                    //Console.WriteLine("已存数据");
+                                    //Console.WriteLine(contentSizes[num]);
+                                    //Console.WriteLine(min);
+                                    //i = byteto(buffer).Length;
+                                    //Console.WriteLine(i);
+                                    //MessageBox.Show(min.ToString("0.0"));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Globals.Log("接收消息失败" + ex.ToString());
+                MessageBox.Show("接收消息失败" + ex.ToString());
+            }
         }
     }
 }

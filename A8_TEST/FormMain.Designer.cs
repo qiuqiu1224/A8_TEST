@@ -195,11 +195,14 @@ namespace A8_TEST
             // 
             // uiToolTip1
             // 
+            this.uiToolTip1.AutoPopDelay = 5000;
             this.uiToolTip1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(54)))), ((int)(((byte)(54)))), ((int)(((byte)(54)))));
             this.uiToolTip1.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
             this.uiToolTip1.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.uiToolTip1.InitialDelay = 500;
             this.uiToolTip1.OwnerDraw = true;
             this.uiToolTip1.RectColor = System.Drawing.Color.Transparent;
+            this.uiToolTip1.ReshowDelay = 10;
             // 
             // FormMain
             // 
@@ -220,7 +223,7 @@ namespace A8_TEST
             this.Text = "Form1";
             this.TopMost = true;
             this.ZoomScaleRect = new System.Drawing.Rectangle(15, 15, 1235, 860);
-            this.Load += new System.EventHandler(this.Form1_Load);
+            this.Load += new System.EventHandler(this.FormMain_Load);
             ((System.ComponentModel.ISupportInitialize)(this.pic)).EndInit();
             this.uiNavBar1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox3)).EndInit();
