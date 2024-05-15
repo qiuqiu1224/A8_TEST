@@ -16,6 +16,7 @@ using Sunny.UI;
 using System.Runtime.InteropServices;
 using System.Net.Sockets;
 using System.Net;
+using System.Media;
 
 namespace A8_TEST
 {
@@ -49,7 +50,6 @@ namespace A8_TEST
 
         private bool saveVideoFlag = false;//录制视频标志
         private bool mouseFollowFlag = false;//鼠标跟随标志
-
 
         List<int> picMouseX = new List<int>();//鼠标跟随x坐标
         List<int> picMouseY = new List<int>();//鼠标跟随y坐标
@@ -97,123 +97,59 @@ namespace A8_TEST
 
         private bool saveImageFlag;//保存图像标志
         private bool saveAlarmImageFlag;//保存报警图像标志
+        private bool alertFlag;//报警标志
 
         List<Object> objects = new List<object>();
+
+
 
         [Obsolete]
         public FormMain()
         {
-
-            InitializeComponent();
-
-            this.TopMost = true;
-            this.WindowState = FormWindowState.Maximized;
-
-            m_SyncContext = SynchronizationContext.Current;
-            Control.CheckForIllegalCrossThreadCalls = false;
-            SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.AllPaintingInWmPaint, true);
-            SetStyle(ControlStyles.UserPaint, true);
-            SetStyle(ControlStyles.AllPaintingInWmPaint, true); // 禁止擦除背景.
-            SetStyle(ControlStyles.DoubleBuffer, true); // 双缓冲
-
-            //读取配置文件
-            Globals.ReadInfoXml<SystemParam>(ref Globals.systemParam, Globals.systemXml);
+            try
+            {
+                InitializeComponent();
 
 
-            ////查找红外设备ip地址
-            //ipLists = FindDeviceIpAddress();
 
-            //if (ipLists.Count > 0)
-            //{
-            //    for (int i = 0; i < ipLists.Count; i++)
-            //    {
-            //        //初始化红外设备对象，并添加到集合
-            //        A8SDK a8 = new A8SDK(ipLists[i]);
-            //        a8Lists.Add(a8);
-            //    }
-            //}
+                //设置默认显示界面
+               // uiNavBar1.SelectedIndex = 0;
 
+                //Thread threadAlert = new Thread(new ThreadStart(ThreadAlert));
+                //threadAlert.Name = "threadAlert";
+                //threadAlert.Start();
+            }
+            catch (Exception ex)
+            {
+                Globals.Log("启动失败"+ ex.ToString()) ;
+            }
 
-            int pageIndex = PAGE_INDEX;
+        }
 
-            //设置关联
-            uiNavBar1.TabControl = uiTabControl1;
+        private void ThreadAlert()
+        {
+            while (true)
+            {
+                Thread.Sleep(10);
 
-            //uiNavBar1设置节点，也可以在Nodes属性里配置
-            uiNavBar1.Nodes.Add("在线监控");
-            uiNavBar1.SetNodeSymbol(uiNavBar1.Nodes[0], 61501);//设置图标
+                if (alertFlag)
+                {
+                    try
+                    {
+                        SoundPlayer player = new SoundPlayer();
+                        player.SoundLocation = Application.StartupPath + "\\Alert.wav";
+                        player.Load();
+                        player.Play();
+                        Thread.Sleep(5000);
 
-            //添加实时监控界面
-            fmonitor = new FMonitor();
-            AddPage(fmonitor, pageIndex);
-            uiNavBar1.SetNodePageIndex(uiNavBar1.Nodes[0], pageIndex);//设置显示的初始界面为实时监控界面
-
-            uiNavBar1.Nodes.Add("图像浏览");
-            uiNavBar1.SetNodeSymbol(uiNavBar1.Nodes[1], 61502);
-
-            //添加图像浏览界面  PAGE_INDEX + 1
-            pageIndex++;
-            fbrowse = new FormBrowse();
-            AddPage(fbrowse, pageIndex);
-            uiNavBar1.SetNodePageIndex(uiNavBar1.Nodes[1], pageIndex);
-
-            uiNavBar1.Nodes.Add("系统设置");
-            uiNavBar1.SetNodeSymbol(uiNavBar1.Nodes[2], 61459);
-
-            //设置默认显示界面
-            // uiNavBar1.SelectedIndex = 0;
-
-
-            //初始化数据
-            initDatas();
-
-            //初始化图像显示控件布局
-            SetFmonitorDisplayWnds((uint)Globals.systemParam.deviceCount, 2);
-
-            //LoginOpDevice(0, Globals.systemParam.op_ip_1, Globals.systemParam.op_username_1, Globals.systemParam.op_psw_1, Globals.systemParam.op_port_1, cbLoginCallBack);
-            //PreviewOpDevice_1(0, RealDataCallBack);
-            ////开启解码红外视频线程
-            //DecodingIRImage(0);
-            //////开启红外图像预览线程
-            //PreviewIRImage(0);
-
-            //获取Fmonitor界面开始采集按钮，并添加相关事件
-            startPrewviewBtn = (UISymbolButton)fmonitor.GetControl("startPrewviewBtn");
-            startPrewviewBtn.Click += new EventHandler(StartPrewviewBtn_Click);
-            startPrewviewBtn.MouseHover += new EventHandler(StartPrewviewBtn_MouseHover);
-            startPrewviewBtn.MouseLeave += new EventHandler(StartPrewviewBtn_MouseLeave);
-
-            //获取Fmonitor界面停止按钮，并添加相关事件
-            stopPrewviewBtn = (UISymbolButton)fmonitor.GetControl("stopPrewviewBtn");
-            stopPrewviewBtn.Click += new EventHandler(StopPrewviewBtn_Click);
-            stopPrewviewBtn.MouseHover += new EventHandler(StopPrewviewBtn_MouseHover);
-            stopPrewviewBtn.MouseLeave += new EventHandler(StopPrewviewBtn_MouseLeave);
-
-            //获取Fmonitor界面开始录制视频按钮，并添加相关事件
-            startRecordBtn = (UISymbolButton)fmonitor.GetControl("startRecordBtn");
-            startRecordBtn.Click += new EventHandler(StartRecordBtn_Click);
-            startRecordBtn.MouseHover += new EventHandler(StartRecordBtn_MouseHover);
-            startRecordBtn.MouseLeave += new EventHandler(StartRecordBtn_MouseLeave);
-
-            //获取Fmoitor界面停止录制视频按钮，并添加相关事件
-            stopRecordBtn = (UISymbolButton)fmonitor.GetControl("stopRecordBtn");
-            stopRecordBtn.Click += new EventHandler(StopRecordBtn_Click);
-            stopRecordBtn.MouseHover += new EventHandler(stopRecordBtn_MouseHover);
-            stopRecordBtn.MouseLeave += new EventHandler(stopRecordBtn_MouseLeave);
-
-            //获取Fmoitor界面鼠标跟随按钮，并添加相关事件
-            mouseFollowBtn = (UISymbolButton)fmonitor.GetControl("mouseFollowBtn");
-            mouseFollowBtn.Click += new EventHandler(mouseFollowBtn_Click);
-            mouseFollowBtn.MouseHover += new EventHandler(mouseFollowBtn_MouseHover);
-            mouseFollowBtn.MouseLeave += new EventHandler(mouseFollowBtn_MouseLeave);
-
-            //为按钮添加提示信息
-            uiToolTip1.SetToolTip(startPrewviewBtn, "开始采集");
-            uiToolTip1.SetToolTip(stopPrewviewBtn, "停止采集");
-            uiToolTip1.SetToolTip(startRecordBtn, "开始录制");
-            uiToolTip1.SetToolTip(stopRecordBtn, "停止录制");
-            uiToolTip1.SetToolTip(mouseFollowBtn, "鼠标跟随");
-
+                        alertFlag = false;
+                    }
+                    catch (Exception e)
+                    {
+                        Globals.Log("ThreadAlert" + e.Message);
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -223,7 +159,7 @@ namespace A8_TEST
         /// <param name="imageName"></param>
         private void SetButtonImg(UISymbolButton btn, string imageName)
         {
-            btn.Image = Image.FromFile(Globals.startPathInfo.Parent.Parent.FullName + "\\Resources\\" + imageName);
+            btn.Image = Image.FromFile(Globals.startPathInfo.FullName + "\\Resources\\" + imageName);
         }
 
         /// <summary>
@@ -366,7 +302,7 @@ namespace A8_TEST
         /// <param name="e"></param>
         private void StopPrewviewBtn_MouseLeave(object sender, EventArgs e)
         {
-            SetButtonImg(stopPrewviewBtn, "stop.png");            
+            SetButtonImg(stopPrewviewBtn, "stop.png");
         }
 
         /// <summary>
@@ -376,7 +312,7 @@ namespace A8_TEST
         /// <param name="e"></param>
         private void StopPrewviewBtn_MouseHover(object sender, EventArgs e)
         {
-            SetButtonImg(stopPrewviewBtn, "stopPressed.png");           
+            SetButtonImg(stopPrewviewBtn, "stopPressed.png");
         }
 
         /// <summary>
@@ -386,7 +322,7 @@ namespace A8_TEST
         /// <param name="e"></param>
         private void StartPrewviewBtn_MouseHover(object sender, EventArgs e)
         {
-            SetButtonImg(startPrewviewBtn, "开始(1).png");            
+            SetButtonImg(startPrewviewBtn, "开始(1).png");
         }
 
         /// <summary>
@@ -402,10 +338,11 @@ namespace A8_TEST
             }
         }
 
+       
         /// <summary>
         /// 开始采集预览图像
         /// </summary>
-        private void StartPrewview()
+        private void StartPrewview(int deviceNum,string op_ip,string op_userName,string op_psw,string op_port, CHCNetSDK.LOGINRESULTCALLBACK cbLoginCallBack, CHCNetSDK.REALDATACALLBACK realDataCallBack)
         {
             //已经开始采集，返回
             if (isStartPrewview)
@@ -413,23 +350,24 @@ namespace A8_TEST
                 return;
             }
 
-            ConnectSocketToReceiveTemp(0);
+            //ConnectSocketToReceiveTemp(deviceNum);
 
             isStartPrewview = true;//设置开始采集标志为true
 
-            //登录光学相机
-            LoginOpDevice(0, Globals.systemParam.op_ip_1, Globals.systemParam.op_username_1, Globals.systemParam.op_psw_1, Globals.systemParam.op_port_1, cbLoginCallBack);
-
-            //采集预览光学图像
-            PreviewOpDevice(0, RealDataCallBack);
-
             //开启解码红外视频线程
-            DecodingIRImage(0);
+            DecodingIRImage(deviceNum);
 
             ////开启红外图像预览线程
-            PreviewIRImage(0);
+            PreviewIRImage(deviceNum);
 
-            SetButtonImg(startPrewviewBtn, "开始(1).png");          
+            ////登录光学相机
+            //LoginOpDevice(deviceNum,op_ip, op_userName, op_psw, op_port, cbLoginCallBack);
+
+            ////采集预览光学图像
+           PreviewOpDevice(deviceNum, realDataCallBack);
+
+
+            //SetButtonImg(startPrewviewBtn, "开始(1).png");
 
             //设备校时
             Timing();
@@ -473,7 +411,7 @@ namespace A8_TEST
 
             //设置监控界面功能按钮的图像
             SetMonitorFucBtnImg("开始 .png", "stopPressed.png");
-            SetButtonImg(startRecordBtn, "开始录制-line.png");        
+            SetButtonImg(startRecordBtn, "开始录制-line.png");
         }
 
         /// <summary>
@@ -483,7 +421,7 @@ namespace A8_TEST
         /// <param name="e"></param>
         private void StartPrewviewBtn_Click(object sender, EventArgs e)
         {
-            StartPrewview();
+            StartPrewview(0, Globals.systemParam.op_ip_1, Globals.systemParam.op_username_1, Globals.systemParam.op_psw_1, Globals.systemParam.op_port_1, cbLoginCallBack, RealDataCallBack);            
         }
 
         /// <summary>
@@ -505,11 +443,16 @@ namespace A8_TEST
         /// <param name="num">设备号，从0开始</param>
         private void DecodingIRImage(int num)
         {
-            ParameterizedThreadStart thStart = new ParameterizedThreadStart(DeCoding);//threadStart委托 
-            Thread thread = new Thread(thStart);
-            //thread.Priority = ThreadPriority.Highest;
-            thread.IsBackground = true; //关闭窗体继续执行
-            thread.Start(num);
+
+            thPlayer = new Thread(DeCoding);
+            thPlayer.IsBackground = true;
+            thPlayer.Start();
+
+            //ParameterizedThreadStart thStart = new ParameterizedThreadStart(DeCoding);//threadStart委托 
+            //Thread thread = new Thread(thStart);
+            ////thread.Priority = ThreadPriority.Highest;
+            //thread.IsBackground = true; //关闭窗体继续执行
+            //thread.Start(num);
         }
 
         /// <summary>
@@ -771,10 +714,12 @@ namespace A8_TEST
                     //红外图像集合长度不为0
                     if (irImageLists[num].Count > 0)
                     {
+                        
                         //this.Invoke(new MethodInvoker(() =>
                         //{
                         Bitmap bitmap = (Bitmap)irImageLists[num][0].Clone();
-                        Console.WriteLine("bitmap.Width" + bitmap.Width);
+                                             
+                        //Console.WriteLine("bitmap.Width" + bitmap.Width);
 
                         if (bitmap != null)
                         {
@@ -798,6 +743,7 @@ namespace A8_TEST
                                     if (i == 0)
                                     {
                                         saveAlarmImageFlag = true;
+                                        alertFlag = true;
                                         i = 1;
                                     }
 
@@ -923,15 +869,15 @@ namespace A8_TEST
                                 }
 
                                 b = null;
-                                bitmap = null;
+                                bitmap = null;                           
 
                             }
                         }
                         //}));
                         //红外图像集合数量大于5，删除多余图像，防止阻塞
-                        if (irImageLists[num].Count > 5)
+                        if (irImageLists[num].Count > 3)
                         {
-                            irImageLists[num].RemoveRange(0, irImageLists[num].Count - 5);
+                            irImageLists[num].RemoveRange(0, irImageLists[num].Count - 3);
                         }
 
                         //irImageLists[num].RemoveAt(0);
@@ -984,7 +930,6 @@ namespace A8_TEST
             ipList.Add(Globals.systemParam.ir_ip_2);
 
 
-
             for (int i = 0; i < deviceCount; i++)
             {
                 //初始化userId为-1
@@ -1035,8 +980,6 @@ namespace A8_TEST
             Globals.fileInfos = dirInfo.GetFiles("*.bmp");
             Globals.SortFolderByCreateTime(ref Globals.fileInfos);
             //Console.WriteLine("FormBrowse_Load" + Globals.fileInfos[0].Name);
-
-
 
         }
 
@@ -1316,34 +1259,76 @@ namespace A8_TEST
 
 
         /// <summary>
-        /// 解码线程执行方法
+        /// 播放线程执行方法
         /// </summary>
         [Obsolete]
-        private unsafe void DeCoding(object deviceNum)
+        private unsafe void DeCoding()
         {
-            int num = (int)deviceNum;
-            isShowIRImageFlags[num] = true;
             try
             {
-                //Console.WriteLine("DeCoding run...");
-                //Bitmap oldBmp = null;
+                Console.WriteLine("DeCoding run...");
+                Bitmap oldBmp = null;
+
 
                 // 更新图片显示
                 tstRtmp.ShowBitmap show = (bmp) =>
                 {
-                    lock (objects[num])
+                    this.Invoke(new MethodInvoker(() =>
                     {
-                        irImageLists[num].Add((Bitmap)bmp.Clone());
+                        using (Graphics gfx = Graphics.FromImage(bmp))
+                        {
 
-                        //if (irImageLists[num].Count > 5)
-                        //{
-                        //    irImageLists[num].RemoveAt(0);
-                        //}
-                    }
+                            if (bmp != null)
+                            {
+
+
+                                // 设置文字的格式
+                                Font font = new Font("Arial", 12);
+                                Brush brush = Brushes.Red;
+                                Pen pen = new Pen(Color.Red, 2);
+
+                                string maxTemp;
+                                PointF point;
+                                float pt = 2.0f; //显示水平缩放比例温度数据是384 * 288，视频图像768 * 576      
+
+                                maxTemp = ((float)globa_Temp.max_temp / 10).ToString("F1");//全局最高温度
+
+                                float maxTempX = globa_Temp.max_temp_x * pt;
+                                float maxTempY = globa_Temp.max_temp_y * pt;
+
+                                SizeF maxTempStringSize = gfx.MeasureString(maxTemp, font);
+
+                                if (maxTempX + maxTempStringSize.Width > bmp.Width)
+                                {
+                                    maxTempX = maxTempX - maxTempStringSize.Width;
+                                }
+
+                                if (maxTempY + maxTempStringSize.Height > bmp.Height)
+                                {
+                                    maxTempY = maxTempY - maxTempStringSize.Height;
+                                }
+                                point = new PointF(maxTempX, maxTempY);
+
+                                gfx.DrawString(maxTemp, font, brush, point);
+
+                                DrawCrossLine(gfx, globa_Temp.max_temp_x * pt, globa_Temp.max_temp_y * pt, pen, 10);
+                            }
+
+                        }
+
+                        pics[0].Image = bmp;
+                        if (oldBmp != null)
+                        {
+                            oldBmp.Dispose();
+                        }
+                        oldBmp = bmp;
+                    }));
                 };
-                //Console.WriteLine(ipList[0]);
-                rtmp.Start(show, "rtsp://" + ipList[num] + "/webcam");
-                //rtmp.Start(show, "rtsp://192.168.1.80/webcam");
+                rtmp.Start(show, "rtsp://192.168.100.2/webcam");
+                //rtmp.StartSave(show, "rtsp://192.168.100.2/webcam", "D://123//1.mp4");
+                //rtmp.Start_save(show, "rtsp://192.168.100.2/webcam", "D://123//1.mp4");
+
+
             }
             catch (Exception ex)
             {
@@ -1351,14 +1336,62 @@ namespace A8_TEST
             }
             finally
             {
-                Console.WriteLine("DeCoding exit");
-                this.Invoke(new MethodInvoker(() =>
-                {
-                    button1.Text = "开始播放";
-                    button1.Enabled = true;
-                }));
+                //Console.WriteLine("DeCoding exit");
+                //this.Invoke(new MethodInvoker(() =>
+                //{
+                //    //button_play.Text = "停止播放";
+                //    //button_play.Enabled = true;
+                //}));
             }
         }
+
+
+        /// <summary>
+        /// 解码线程执行方法
+        /// </summary>
+        [Obsolete]
+        //private unsafe void DeCoding(object deviceNum)
+        //{
+        //    int num = (int)deviceNum;
+        //    isShowIRImageFlags[num] = true;
+        //    Bitmap oldBmp = null;
+        //    try
+        //    {
+        //        //Console.WriteLine("DeCoding run...");
+        //        //Bitmap oldBmp = null;
+
+        //        // 更新图片显示
+        //        tstRtmp.ShowBitmap show = (bmp) =>
+        //        {
+        //            lock (objects[num])
+        //            {
+        //                irImageLists[num].Add((Bitmap)bmp.Clone());
+
+        //                pics[num].Image = bmp;
+
+        //                //if (irImageLists[num].Count > 5)
+        //                //{
+        //                //    irImageLists[num].RemoveAt(0);
+        //                //}
+        //            }
+
+        //            if (oldBmp != null)
+        //            {
+        //                oldBmp.Dispose();
+        //            }
+        //            oldBmp = bmp;
+        //        };
+        //        //Console.WriteLine(ipList[0]);
+        //        rtmp.Start(show, "rtsp://" + ipList[num] + "/webcam");
+        //        //rtmp.Start(show, "rtsp://192.168.1.80/webcam");
+
+
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Console.WriteLine(ex);
+        //    }
+        //}
 
         /// <summary>
         /// 绘制十字交叉线
@@ -1707,7 +1740,7 @@ namespace A8_TEST
             Console.WriteLine("isStartPrewview" + isStartPrewview);
             if (pageIndex == PAGE_INDEX)
             {
-                StartPrewview();
+                StartPrewview(0, Globals.systemParam.op_ip_1, Globals.systemParam.op_username_1, Globals.systemParam.op_psw_1, Globals.systemParam.op_port_1, cbLoginCallBack, RealDataCallBack);              
                 SetMonitorFucBtnImg("开始(1).png", "stop.png");
                 //startPrewviewBtn.Image = Image.FromFile(Globals.startPathInfo.Parent.Parent.FullName + "\\Resources\\" + "开始(1).png");
                 //stopPrewviewBtn.Image = Image.FromFile(Globals.startPathInfo.Parent.Parent.FullName + "\\Resources\\" + "stop.png");
@@ -1725,8 +1758,8 @@ namespace A8_TEST
 
         private void SetMonitorFucBtnImg(string startBtnImgName, string stopBtnImgName)
         {
-            startPrewviewBtn.Image = Image.FromFile(Globals.startPathInfo.Parent.Parent.FullName + "\\Resources\\" + startBtnImgName);
-            stopPrewviewBtn.Image = Image.FromFile(Globals.startPathInfo.Parent.Parent.FullName + "\\Resources\\" + stopBtnImgName);
+            SetButtonImg(startPrewviewBtn, startBtnImgName);
+            SetButtonImg(stopPrewviewBtn, stopBtnImgName);          
         }
 
 
@@ -1818,6 +1851,110 @@ namespace A8_TEST
         private void FormMain_Load(object sender, EventArgs e)
         {
             this.DoubleBuffered = true;
+            this.TopMost = true;
+            this.WindowState = FormWindowState.Maximized;
+
+            m_SyncContext = SynchronizationContext.Current;
+            Control.CheckForIllegalCrossThreadCalls = false;
+            SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.AllPaintingInWmPaint, true);
+            SetStyle(ControlStyles.UserPaint, true);
+            SetStyle(ControlStyles.AllPaintingInWmPaint, true); // 禁止擦除背景.
+            SetStyle(ControlStyles.DoubleBuffer, true); // 双缓冲
+
+            //读取配置文件
+            Globals.ReadInfoXml<SystemParam>(ref Globals.systemParam, Globals.systemXml);
+
+            ////查找红外设备ip地址
+            //ipLists = FindDeviceIpAddress();
+
+            //if (ipLists.Count > 0)
+            //{
+            //    for (int i = 0; i < ipLists.Count; i++)
+            //    {
+            //        //初始化红外设备对象，并添加到集合
+            //        A8SDK a8 = new A8SDK(ipLists[i]);
+            //        a8Lists.Add(a8);
+            //    }
+            //}
+
+
+            int pageIndex = PAGE_INDEX;
+
+            //设置关联
+            uiNavBar1.TabControl = uiTabControl1;
+
+            //uiNavBar1设置节点，也可以在Nodes属性里配置
+            uiNavBar1.Nodes.Add("在线监控");
+            uiNavBar1.SetNodeSymbol(uiNavBar1.Nodes[0], 61501);//设置图标
+
+            //添加实时监控界面
+            fmonitor = new FMonitor();
+            AddPage(fmonitor, pageIndex);
+            uiNavBar1.SetNodePageIndex(uiNavBar1.Nodes[0], pageIndex);//设置显示的初始界面为实时监控界面
+
+            uiNavBar1.Nodes.Add("图像浏览");
+            uiNavBar1.SetNodeSymbol(uiNavBar1.Nodes[1], 61502);
+
+            //添加图像浏览界面  PAGE_INDEX + 1
+            pageIndex++;
+            fbrowse = new FormBrowse();
+            AddPage(fbrowse, pageIndex);
+            uiNavBar1.SetNodePageIndex(uiNavBar1.Nodes[1], pageIndex);
+
+            uiNavBar1.Nodes.Add("系统设置");
+            uiNavBar1.SetNodeSymbol(uiNavBar1.Nodes[2], 61459);
+
+
+            //初始化数据
+            initDatas();
+
+
+            //初始化图像显示控件布局
+            SetFmonitorDisplayWnds((uint)Globals.systemParam.deviceCount, 2);
+
+            //LoginOpDevice(0, Globals.systemParam.op_ip_1, Globals.systemParam.op_username_1, Globals.systemParam.op_psw_1, Globals.systemParam.op_port_1, cbLoginCallBack);
+            //PreviewOpDevice_1(0, RealDataCallBack);
+            ////开启解码红外视频线程
+            //DecodingIRImage(0);
+            //////开启红外图像预览线程
+            //PreviewIRImage(0);
+
+            //获取Fmonitor界面开始采集按钮，并添加相关事件
+            startPrewviewBtn = (UISymbolButton)fmonitor.GetControl("startPrewviewBtn");
+            startPrewviewBtn.Click += new EventHandler(StartPrewviewBtn_Click);
+            startPrewviewBtn.MouseHover += new EventHandler(StartPrewviewBtn_MouseHover);
+            startPrewviewBtn.MouseLeave += new EventHandler(StartPrewviewBtn_MouseLeave);
+
+            //获取Fmonitor界面停止按钮，并添加相关事件
+            stopPrewviewBtn = (UISymbolButton)fmonitor.GetControl("stopPrewviewBtn");
+            stopPrewviewBtn.Click += new EventHandler(StopPrewviewBtn_Click);
+            stopPrewviewBtn.MouseHover += new EventHandler(StopPrewviewBtn_MouseHover);
+            stopPrewviewBtn.MouseLeave += new EventHandler(StopPrewviewBtn_MouseLeave);
+
+            //获取Fmonitor界面开始录制视频按钮，并添加相关事件
+            startRecordBtn = (UISymbolButton)fmonitor.GetControl("startRecordBtn");
+            startRecordBtn.Click += new EventHandler(StartRecordBtn_Click);
+            startRecordBtn.MouseHover += new EventHandler(StartRecordBtn_MouseHover);
+            startRecordBtn.MouseLeave += new EventHandler(StartRecordBtn_MouseLeave);
+
+            //获取Fmoitor界面停止录制视频按钮，并添加相关事件
+            stopRecordBtn = (UISymbolButton)fmonitor.GetControl("stopRecordBtn");
+            stopRecordBtn.Click += new EventHandler(StopRecordBtn_Click);
+            stopRecordBtn.MouseHover += new EventHandler(stopRecordBtn_MouseHover);
+            stopRecordBtn.MouseLeave += new EventHandler(stopRecordBtn_MouseLeave);
+
+            //获取Fmoitor界面鼠标跟随按钮，并添加相关事件
+            mouseFollowBtn = (UISymbolButton)fmonitor.GetControl("mouseFollowBtn");
+            mouseFollowBtn.Click += new EventHandler(mouseFollowBtn_Click);
+            mouseFollowBtn.MouseHover += new EventHandler(mouseFollowBtn_MouseHover);
+            mouseFollowBtn.MouseLeave += new EventHandler(mouseFollowBtn_MouseLeave);
+
+            //为按钮添加提示信息
+            uiToolTip1.SetToolTip(startPrewviewBtn, "开始采集");
+            uiToolTip1.SetToolTip(stopPrewviewBtn, "停止采集");
+            uiToolTip1.SetToolTip(startRecordBtn, "开始录制");
+            uiToolTip1.SetToolTip(stopRecordBtn, "停止录制");
+            uiToolTip1.SetToolTip(mouseFollowBtn, "鼠标跟随");
         }
 
         private void UiButton1_Click_1(object sender, EventArgs e)
@@ -1845,7 +1982,7 @@ namespace A8_TEST
         private void Receive(object deviceNum)
         {
             int num = (int)deviceNum;
-            int com_temp;
+            int test = 0;
             //double min, max, avg;
             //int maxx, maxy, minx, miny;
             try
@@ -1858,6 +1995,7 @@ namespace A8_TEST
 
                     byte[] buffer = new byte[1024 * 1024];
                     int r = sockets[num].Receive(buffer);
+                    test = r;
                     //Console.WriteLine("读取到数据");
                     //Console.WriteLine(r);
 
@@ -1951,12 +2089,16 @@ namespace A8_TEST
                             }
                         }
                     }
+
+                    Thread.Sleep(10);
                 }
             }
             catch (Exception ex)
             {
+                
                 Globals.Log("接收消息失败" + ex.ToString());
-                MessageBox.Show("接收消息失败" + ex.ToString());
+                Globals.Log("目标数组长度：" + dataBuffers[num].Length + "destIndex：" + contentSizes[num] + "r:" + test);
+                //MessageBox.Show("接收消息失败" + ex.ToString());
             }
         }
     }
