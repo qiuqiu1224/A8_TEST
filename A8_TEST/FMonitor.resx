@@ -118,22 +118,30 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <assembly alias="System.Drawing" name="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
+  <data name="takePicBtn.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABkAAAAZCAYAAADE6YVjAAAABGdBTUEAALGPC/xhBQAAANZJREFUSEvt
+        leENgjAUhDuCIziCoziCIzCCGziCI3SPQtMRHMER8M5cG4MoDwL8QC/50vD6+q4tpbjtK4RwiDH6lNJO
+        ofkFgytoQaXQ/FrERNvDwpkbeDPh9oF9D8PbimIXFe1STJqmOeL53ukvsF+p/eJMkHgCFcGApMHFhKtV
+        nEavZCOvVJswwPxOkMPJ/U1+zUQns63r+qyQTWNMJmttE7bc81GozHch8dM1Y2X4EPDSQyKNvIF8mbLN
+        MdtqrGJBYJv9VK1iol/Asib6GJ+nUKFNyrkH0Nvmy1eAcz8AAAAASUVORK5CYII=
+</value>
+  </data>
   <data name="uiSymbolButton2.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
     <value>
-        iVBORw0KGgoAAAANSUhEUgAAABkAAAAZCAYAAADE6YVjAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8
-        YQUAAAA7SURBVEhL7daxDQAgFAJRRnVTRlOLv8AVJMbwKrpr0ZNsr5k5N7Jn5jSCNII0gjSCNII0gnwV
-        yb8VTjrWGUkny/mJzgAAAABJRU5ErkJggg==
+        iVBORw0KGgoAAAANSUhEUgAAABkAAAAZCAYAAADE6YVjAAAABGdBTUEAALGPC/xhBQAAADtJREFUSEvt
+        1rENACAUAlFGdVNGU4u/wBUkxvAqumvRk2yvmTk3smfmNII0gjSCNII0gjSCfBXJvxVOOtYZSSfL+YnO
+        AAAAAElFTkSuQmCC
 </value>
   </data>
   <data name="mouseFollowBtn.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
     <value>
-        iVBORw0KGgoAAAANSUhEUgAAABkAAAAZCAYAAADE6YVjAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8
-        YQUAAAEbSURBVEhL7ZXhDYJADEYZgREcgREYwQ1kAx2BDXQD2cANwA10A91AN9DXpCTHUQ4OiL/8kpcQ
-        rv1o6XEkf1lqmiaDI1xgo7eXC7MUdnCDj0OlIfOFiVR9hpea+pQaGicSpeo9+FVbxL0uEnKQqi2zHnVd
-        XzU1LII3IFU/2uQICrWxRcAWZHdYyaPQxVut+iKghDlV+5zUsisWCi9wCZnadsXCKg/hVd3V0hZBJUFP
-        PzGS8MBbESgfWSUDdJJH0fhUbaaLpCKiu/nHCMnylVeO2RD2wKcKgzTUEWvhgU8VZqEdeNCwZcJIuhna
-        DPEDHxJm1myW/zdcYSinsf+QXJfXk7sB5FpvryvM5SBtu1hn4JYwl5027Qj5jZLkC96z568jWB9jAAAA
-        AElFTkSuQmCC
+        iVBORw0KGgoAAAANSUhEUgAAABkAAAAZCAYAAADE6YVjAAAABGdBTUEAALGPC/xhBQAAARtJREFUSEvt
+        leENgkAMRhmBERyBERjBDWQDHYENdAPZwA3ADXQD3UA30NekJMdRDg6Iv/ySlxCu/WjpcSR/WWqaJoMj
+        XGCjt5cLsxR2cIOPQ6Uh84WJVH2Gl5r6lBoaJxKl6j34VVvEvS4ScpCqLbMedV1fNTUsgjcgVT/a5AgK
+        tbFFwBZkd1jJo9DFW636IqCEOVX7nNSyKxYKL3AJmdp2xcIqD+FV3dXSFkElQU8/MZLwwFsRKB9ZJQN0
+        kkfR+FRtpoukIqK7+ccIyfKVV47ZEPbApwqDNNQRa+GBTxVmoR140LBlwki6GdoM8QMfEmbWbJb/N1xh
+        KKex/5Bcl9eTuwHkWm+vK8zlIG27WGfgljCXnTbtCPmNkuQL3rPnryNYH2MAAAAASUVORK5CYII=
 </value>
   </data>
   <data name="stopRecordBtn.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">

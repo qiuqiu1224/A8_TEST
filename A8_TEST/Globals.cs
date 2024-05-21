@@ -19,6 +19,8 @@ namespace A8_TEST
 
         public static string AlarmImageDirectoryPath = Application.StartupPath + "\\" + "AlarmImage";
 
+        public static string RecordDirectoryPath = Application.StartupPath + "\\" + "Record";
+
         public static string systemXml = Application.StartupPath + "\\SystemSetting.xml";
 
         public static FileInfo[] fileInfos;

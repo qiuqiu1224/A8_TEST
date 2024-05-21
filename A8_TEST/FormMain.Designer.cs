@@ -101,7 +101,6 @@ namespace A8_TEST
             this.uiNavBar1.Size = new System.Drawing.Size(1235, 49);
             this.uiNavBar1.TabIndex = 3;
             this.uiNavBar1.Text = "uiNavBar1";
-            this.uiNavBar1.MenuItemClick += new Sunny.UI.UINavBar.OnMenuItemClick(this.UiNavBar1_MenuItemClick);
             // 
             // pictureBox3
             // 
@@ -171,9 +170,9 @@ namespace A8_TEST
             // tabPage1
             // 
             this.tabPage1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(31)))), ((int)(((byte)(36)))));
-            this.tabPage1.Location = new System.Drawing.Point(0, 0);
+            this.tabPage1.Location = new System.Drawing.Point(0, 40);
             this.tabPage1.Name = "tabPage1";
-            this.tabPage1.Size = new System.Drawing.Size(1235, 811);
+            this.tabPage1.Size = new System.Drawing.Size(200, 60);
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "tabPage1";
             // 

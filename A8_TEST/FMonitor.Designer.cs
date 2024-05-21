@@ -30,19 +30,21 @@
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FMonitor));
             this.uiPanel1 = new Sunny.UI.UIPanel();
+            this.uiSymbolButton2 = new Sunny.UI.UISymbolButton();
+            this.mouseFollowBtn = new Sunny.UI.UISymbolButton();
             this.stopRecordBtn = new Sunny.UI.UISymbolButton();
             this.startRecordBtn = new Sunny.UI.UISymbolButton();
             this.stopPrewviewBtn = new Sunny.UI.UISymbolButton();
             this.startPrewviewBtn = new Sunny.UI.UISymbolButton();
             this.uiNavMenu1 = new Sunny.UI.UINavMenu();
-            this.mouseFollowBtn = new Sunny.UI.UISymbolButton();
-            this.uiSymbolButton2 = new Sunny.UI.UISymbolButton();
+            this.takePicBtn = new Sunny.UI.UISymbolButton();
             this.uiPanel1.SuspendLayout();
             this.SuspendLayout();
             // 
             // uiPanel1
             // 
             this.uiPanel1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(243)))), ((int)(((byte)(249)))), ((int)(((byte)(255)))));
+            this.uiPanel1.Controls.Add(this.takePicBtn);
             this.uiPanel1.Controls.Add(this.uiSymbolButton2);
             this.uiPanel1.Controls.Add(this.mouseFollowBtn);
             this.uiPanel1.Controls.Add(this.stopRecordBtn);
@@ -68,6 +70,55 @@
             this.uiPanel1.TabIndex = 3;
             this.uiPanel1.Text = "uiPanel1";
             this.uiPanel1.TextAlignment = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // uiSymbolButton2
+            // 
+            this.uiSymbolButton2.BackColor = System.Drawing.Color.Transparent;
+            this.uiSymbolButton2.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.uiSymbolButton2.FillColor = System.Drawing.Color.Transparent;
+            this.uiSymbolButton2.Font = new System.Drawing.Font("宋体", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiSymbolButton2.ForeColor = System.Drawing.Color.Transparent;
+            this.uiSymbolButton2.Image = ((System.Drawing.Image)(resources.GetObject("uiSymbolButton2.Image")));
+            this.uiSymbolButton2.LightColor = System.Drawing.Color.Transparent;
+            this.uiSymbolButton2.Location = new System.Drawing.Point(218, 8);
+            this.uiSymbolButton2.Margin = new System.Windows.Forms.Padding(10, 3, 3, 3);
+            this.uiSymbolButton2.MinimumSize = new System.Drawing.Size(1, 1);
+            this.uiSymbolButton2.Name = "uiSymbolButton2";
+            this.uiSymbolButton2.RectColor = System.Drawing.Color.Transparent;
+            this.uiSymbolButton2.RectHoverColor = System.Drawing.Color.Transparent;
+            this.uiSymbolButton2.RectPressColor = System.Drawing.Color.Transparent;
+            this.uiSymbolButton2.RectSelectedColor = System.Drawing.Color.Transparent;
+            this.uiSymbolButton2.Size = new System.Drawing.Size(15, 35);
+            this.uiSymbolButton2.SymbolColor = System.Drawing.Color.Transparent;
+            this.uiSymbolButton2.TabIndex = 5;
+            this.uiSymbolButton2.TipsColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.uiSymbolButton2.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiSymbolButton2.TipsText = "停止采集";
+            // 
+            // mouseFollowBtn
+            // 
+            this.mouseFollowBtn.BackColor = System.Drawing.Color.Transparent;
+            this.mouseFollowBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.mouseFollowBtn.FillColor = System.Drawing.Color.Transparent;
+            this.mouseFollowBtn.Font = new System.Drawing.Font("宋体", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.mouseFollowBtn.ForeColor = System.Drawing.Color.Transparent;
+            this.mouseFollowBtn.Image = ((System.Drawing.Image)(resources.GetObject("mouseFollowBtn.Image")));
+            this.mouseFollowBtn.LightColor = System.Drawing.Color.Transparent;
+            this.mouseFollowBtn.Location = new System.Drawing.Point(236, 8);
+            this.mouseFollowBtn.Margin = new System.Windows.Forms.Padding(10, 3, 3, 3);
+            this.mouseFollowBtn.MinimumSize = new System.Drawing.Size(1, 1);
+            this.mouseFollowBtn.Name = "mouseFollowBtn";
+            this.mouseFollowBtn.RectColor = System.Drawing.Color.Transparent;
+            this.mouseFollowBtn.RectHoverColor = System.Drawing.Color.Transparent;
+            this.mouseFollowBtn.RectPressColor = System.Drawing.Color.Transparent;
+            this.mouseFollowBtn.RectSelectedColor = System.Drawing.Color.Transparent;
+            this.mouseFollowBtn.Size = new System.Drawing.Size(30, 35);
+            this.mouseFollowBtn.SymbolColor = System.Drawing.Color.Transparent;
+            this.mouseFollowBtn.TabIndex = 4;
+            this.mouseFollowBtn.TipsColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.mouseFollowBtn.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.mouseFollowBtn.TipsText = "停止采集";
+            this.mouseFollowBtn.Click += new System.EventHandler(this.MouseFollowBtn_Click);
             // 
             // stopRecordBtn
             // 
@@ -188,53 +239,29 @@
             this.uiNavMenu1.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
             this.uiNavMenu1.Visible = false;
             // 
-            // mouseFollowBtn
+            // takePicBtn
             // 
-            this.mouseFollowBtn.BackColor = System.Drawing.Color.Transparent;
-            this.mouseFollowBtn.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.mouseFollowBtn.FillColor = System.Drawing.Color.Transparent;
-            this.mouseFollowBtn.Font = new System.Drawing.Font("宋体", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.mouseFollowBtn.ForeColor = System.Drawing.Color.Transparent;
-            this.mouseFollowBtn.Image = ((System.Drawing.Image)(resources.GetObject("mouseFollowBtn.Image")));
-            this.mouseFollowBtn.LightColor = System.Drawing.Color.Transparent;
-            this.mouseFollowBtn.Location = new System.Drawing.Point(203, 8);
-            this.mouseFollowBtn.Margin = new System.Windows.Forms.Padding(10, 3, 3, 3);
-            this.mouseFollowBtn.MinimumSize = new System.Drawing.Size(1, 1);
-            this.mouseFollowBtn.Name = "mouseFollowBtn";
-            this.mouseFollowBtn.RectColor = System.Drawing.Color.Transparent;
-            this.mouseFollowBtn.RectHoverColor = System.Drawing.Color.Transparent;
-            this.mouseFollowBtn.RectPressColor = System.Drawing.Color.Transparent;
-            this.mouseFollowBtn.RectSelectedColor = System.Drawing.Color.Transparent;
-            this.mouseFollowBtn.Size = new System.Drawing.Size(30, 35);
-            this.mouseFollowBtn.SymbolColor = System.Drawing.Color.Transparent;
-            this.mouseFollowBtn.TabIndex = 4;
-            this.mouseFollowBtn.TipsColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
-            this.mouseFollowBtn.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.mouseFollowBtn.TipsText = "停止采集";
-            // 
-            // uiSymbolButton2
-            // 
-            this.uiSymbolButton2.BackColor = System.Drawing.Color.Transparent;
-            this.uiSymbolButton2.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.uiSymbolButton2.FillColor = System.Drawing.Color.Transparent;
-            this.uiSymbolButton2.Font = new System.Drawing.Font("宋体", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiSymbolButton2.ForeColor = System.Drawing.Color.Transparent;
-            this.uiSymbolButton2.Image = ((System.Drawing.Image)(resources.GetObject("uiSymbolButton2.Image")));
-            this.uiSymbolButton2.LightColor = System.Drawing.Color.Transparent;
-            this.uiSymbolButton2.Location = new System.Drawing.Point(184, 8);
-            this.uiSymbolButton2.Margin = new System.Windows.Forms.Padding(10, 3, 3, 3);
-            this.uiSymbolButton2.MinimumSize = new System.Drawing.Size(1, 1);
-            this.uiSymbolButton2.Name = "uiSymbolButton2";
-            this.uiSymbolButton2.RectColor = System.Drawing.Color.Transparent;
-            this.uiSymbolButton2.RectHoverColor = System.Drawing.Color.Transparent;
-            this.uiSymbolButton2.RectPressColor = System.Drawing.Color.Transparent;
-            this.uiSymbolButton2.RectSelectedColor = System.Drawing.Color.Transparent;
-            this.uiSymbolButton2.Size = new System.Drawing.Size(15, 35);
-            this.uiSymbolButton2.SymbolColor = System.Drawing.Color.Transparent;
-            this.uiSymbolButton2.TabIndex = 5;
-            this.uiSymbolButton2.TipsColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
-            this.uiSymbolButton2.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiSymbolButton2.TipsText = "停止采集";
+            this.takePicBtn.BackColor = System.Drawing.Color.Transparent;
+            this.takePicBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.takePicBtn.FillColor = System.Drawing.Color.Transparent;
+            this.takePicBtn.Font = new System.Drawing.Font("宋体", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.takePicBtn.ForeColor = System.Drawing.Color.Transparent;
+            this.takePicBtn.Image = ((System.Drawing.Image)(resources.GetObject("takePicBtn.Image")));
+            this.takePicBtn.LightColor = System.Drawing.Color.Transparent;
+            this.takePicBtn.Location = new System.Drawing.Point(184, 8);
+            this.takePicBtn.Margin = new System.Windows.Forms.Padding(10, 3, 3, 3);
+            this.takePicBtn.MinimumSize = new System.Drawing.Size(1, 1);
+            this.takePicBtn.Name = "takePicBtn";
+            this.takePicBtn.RectColor = System.Drawing.Color.Transparent;
+            this.takePicBtn.RectHoverColor = System.Drawing.Color.Transparent;
+            this.takePicBtn.RectPressColor = System.Drawing.Color.Transparent;
+            this.takePicBtn.RectSelectedColor = System.Drawing.Color.Transparent;
+            this.takePicBtn.Size = new System.Drawing.Size(30, 35);
+            this.takePicBtn.SymbolColor = System.Drawing.Color.Transparent;
+            this.takePicBtn.TabIndex = 6;
+            this.takePicBtn.TipsColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.takePicBtn.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.takePicBtn.TipsText = "停止采集";
             // 
             // FMonitor
             // 
@@ -261,5 +288,6 @@
         private Sunny.UI.UISymbolButton stopRecordBtn;
         private Sunny.UI.UISymbolButton mouseFollowBtn;
         private Sunny.UI.UISymbolButton uiSymbolButton2;
+        private Sunny.UI.UISymbolButton takePicBtn;
     }
 }

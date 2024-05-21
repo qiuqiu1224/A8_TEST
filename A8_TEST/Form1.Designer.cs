@@ -39,6 +39,7 @@
             this.tabPage2 = new System.Windows.Forms.TabPage();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.timer3 = new System.Windows.Forms.Timer(this.components);
+            this.uiToolTip1 = new Sunny.UI.UIToolTip(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.closePictureBox2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox3)).BeginInit();
@@ -69,6 +70,7 @@
             this.closePictureBox2.SizeMode = System.Windows.Forms.PictureBoxSizeMode.CenterImage;
             this.closePictureBox2.TabIndex = 2;
             this.closePictureBox2.TabStop = false;
+            this.closePictureBox2.Click += new System.EventHandler(this.ClosePictureBox2_Click);
             // 
             // pictureBox3
             // 
@@ -81,6 +83,7 @@
             this.pictureBox3.SizeMode = System.Windows.Forms.PictureBoxSizeMode.CenterImage;
             this.pictureBox3.TabIndex = 3;
             this.pictureBox3.TabStop = false;
+            this.pictureBox3.Click += new System.EventHandler(this.PictureBox3_Click);
             // 
             // uiNavBar1
             // 
@@ -101,6 +104,7 @@
             this.uiNavBar1.Size = new System.Drawing.Size(1235, 49);
             this.uiNavBar1.TabIndex = 8;
             this.uiNavBar1.Text = "uiNavBar1";
+            this.uiNavBar1.MenuItemClick += new Sunny.UI.UINavBar.OnMenuItemClick(this.UiNavBar1_MenuItemClick);
             // 
             // uiTabControl1
             // 
@@ -140,13 +144,24 @@
             // 
             // timer1
             // 
-            this.timer1.Enabled = true;
+            this.timer1.Interval = 500;
             this.timer1.Tick += new System.EventHandler(this.Timer1_Tick);
             // 
             // timer3
             // 
             this.timer3.Interval = 2000;
             this.timer3.Tick += new System.EventHandler(this.Timer3_Tick);
+            // 
+            // uiToolTip1
+            // 
+            this.uiToolTip1.AutoPopDelay = 5000;
+            this.uiToolTip1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(54)))), ((int)(((byte)(54)))), ((int)(((byte)(54)))));
+            this.uiToolTip1.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiToolTip1.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.uiToolTip1.InitialDelay = 100;
+            this.uiToolTip1.OwnerDraw = true;
+            this.uiToolTip1.RectColor = System.Drawing.Color.Transparent;
+            this.uiToolTip1.ReshowDelay = 10;
             // 
             // Form1
             // 
@@ -185,5 +200,6 @@
         private System.Windows.Forms.TabPage tabPage2;
         private System.Windows.Forms.Timer timer1;
         private System.Windows.Forms.Timer timer3;
+        private Sunny.UI.UIToolTip uiToolTip1;
     }
 }

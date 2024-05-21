@@ -43,7 +43,6 @@ namespace A8_TEST
         }
 
 
-
         private void StopPrewviewBtn_Click(object sender, EventArgs e)
         {
             //isStartPrewview = false;
@@ -57,6 +56,11 @@ namespace A8_TEST
         }
 
         private void StartRecordBtn_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void MouseFollowBtn_Click(object sender, EventArgs e)
         {
 
         }

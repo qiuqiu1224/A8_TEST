@@ -14,6 +14,8 @@ using OpenCvSharp;
 using System.Threading;
 using System.Net.Sockets;
 using System.Net;
+using System.Runtime.InteropServices;
+using OpenCvSharp.Extensions;
 
 namespace A8_TEST
 {
@@ -32,7 +34,7 @@ namespace A8_TEST
                                // private UIPanel pixUIPanel;//容纳PictureBox的Panel
                                //public static TransparentLabel[] labels;//图像上面标注控件,背景透明
 
-        UISymbolButton startPrewviewBtn, stopPrewviewBtn, startRecordBtn, stopRecordBtn, mouseFollowBtn;
+        UISymbolButton startPrewviewBtn, stopPrewviewBtn, startRecordBtn, stopRecordBtn, mouseFollowBtn, takePicBtn;
         private bool isStartPrewview = false;//开始采集标志
         List<Socket> sockets = new List<Socket>();//连接红外相机socket
         private delegate string ConnectSocketDelegate(IPEndPoint ipep, Socket sock);
@@ -60,10 +62,9 @@ namespace A8_TEST
 
         #region 红外
         tstRtmp rtmp = new tstRtmp();//利用ffmpeg获取视频数据
-        Rtsplz rtsplz = new Rtsplz();
-        Thread thPlayer;//解码红外视频线程
-        Thread thPlayerlz;
-        SynchronizationContext m_SyncContext = null; //获取上下文
+        Thread thPlayer;//解码红外视频线程      
+
+
         List<string> ipLists = new List<string>(); //设备ip集合
         List<A8SDK> a8Lists = new List<A8SDK>(); //红外设备A8SDK对象集合
         List<A8SDK.globa_temp> globa_Temps = new List<A8SDK.globa_temp>();
@@ -99,15 +100,17 @@ namespace A8_TEST
 
         List<Object> objects = new List<object>();
 
-        A8SDK a8;
-
         List<Bitmap> imageList = new List<Bitmap>();
+
+        string sVideoFileName;
+
+        [Obsolete]
         public Form1()
         {
             InitializeComponent();
 
 
-            a8 = new A8SDK("192.168.100.2");
+            //a8 = new A8SDK("192.168.100.2");
 
             this.TopMost = true;
             this.WindowState = FormWindowState.Maximized;
@@ -155,14 +158,675 @@ namespace A8_TEST
             //初始化图像显示控件布局
             SetFmonitorDisplayWnds((uint)Globals.systemParam.deviceCount, 2);
 
-            //登录光学相机
-            LoginOpDevice(0, "192.168.100.222", "admin", "hik12345", "8000", cbLoginCallBack);
+            //获取Fmonitor界面开始采集按钮，并添加相关事件
+            startPrewviewBtn = (UISymbolButton)fmonitor.GetControl("startPrewviewBtn");
+            startPrewviewBtn.Click += new EventHandler(StartPrewviewBtn_Click);
+            startPrewviewBtn.MouseHover += new EventHandler(StartPrewviewBtn_MouseHover);
+            startPrewviewBtn.MouseLeave += new EventHandler(StartPrewviewBtn_MouseLeave);
 
-            //采集预览光学图像
-            PreviewOpDevice(0, RealDataCallBack);
+            //获取Fmonitor界面停止按钮，并添加相关事件
+            stopPrewviewBtn = (UISymbolButton)fmonitor.GetControl("stopPrewviewBtn");
+            stopPrewviewBtn.Click += new EventHandler(StopPrewviewBtn_Click);
+            stopPrewviewBtn.MouseHover += new EventHandler(StopPrewviewBtn_MouseHover);
+            stopPrewviewBtn.MouseLeave += new EventHandler(StopPrewviewBtn_MouseLeave);
+
+            //获取Fmonitor界面开始录制视频按钮，并添加相关事件
+            startRecordBtn = (UISymbolButton)fmonitor.GetControl("startRecordBtn");
+            startRecordBtn.Click += new EventHandler(StartRecordBtn_Click);
+            startRecordBtn.MouseHover += new EventHandler(StartRecordBtn_MouseHover);
+            startRecordBtn.MouseLeave += new EventHandler(StartRecordBtn_MouseLeave);
+
+            //获取Fmoitor界面停止录制视频按钮，并添加相关事件
+            stopRecordBtn = (UISymbolButton)fmonitor.GetControl("stopRecordBtn");
+            stopRecordBtn.Click += new EventHandler(StopRecordBtn_Click);
+            stopRecordBtn.MouseHover += new EventHandler(stopRecordBtn_MouseHover);
+            stopRecordBtn.MouseLeave += new EventHandler(stopRecordBtn_MouseLeave);
+
+            //获取Fmoitor界面鼠标跟随按钮，并添加相关事件
+            mouseFollowBtn = (UISymbolButton)fmonitor.GetControl("mouseFollowBtn");
+            mouseFollowBtn.Click += new EventHandler(mouseFollowBtn_Click);
+            mouseFollowBtn.MouseHover += new EventHandler(mouseFollowBtn_MouseHover);
+            mouseFollowBtn.MouseLeave += new EventHandler(mouseFollowBtn_MouseLeave);
+
+            //获取Fmoitor界面拍照按钮，并添加相关事件
+            takePicBtn = (UISymbolButton)fmonitor.GetControl("takePicBtn");
+            takePicBtn.Click += new EventHandler(takePicBtn_Click);
+            takePicBtn.MouseHover += new EventHandler(takePicBtn_MouseHover);
+            takePicBtn.MouseLeave += new EventHandler(takePicBtn_MouseLeave);
+
+            //为按钮添加提示信息
+            uiToolTip1.SetToolTip(startPrewviewBtn, "开始采集");
+            uiToolTip1.SetToolTip(stopPrewviewBtn, "停止采集");
+            uiToolTip1.SetToolTip(startRecordBtn, "开始录制");
+            uiToolTip1.SetToolTip(stopRecordBtn, "停止录制");
+            uiToolTip1.SetToolTip(mouseFollowBtn, "鼠标跟随");
+            uiToolTip1.SetToolTip(takePicBtn, "手动抓图");
+
+            StartPrewview();
+
+        }
+
+        private void takePicBtn_MouseLeave(object sender, EventArgs e)
+        {
+            SetButtonImg(takePicBtn, "抓图.png");
+        }
+
+        private void takePicBtn_MouseHover(object sender, EventArgs e)
+        {
+            SetButtonImg(takePicBtn, "抓图3.png");
+        }
+
+
+        private void takePicBtn_Click(object sender, EventArgs e)
+        {
+            saveImageFlag = true;
+        }
+
+        protected override void OnResize(EventArgs e)
+        {
+            if (WindowState == FormWindowState.Maximized)
+            {
+                //登录光学相机
+                //LoginOpDevice(0, Globals.systemParam.op_ip_1, Globals.systemParam.op_username_1, Globals.systemParam.op_psw_1, Globals.systemParam.op_port_1, cbLoginCallBack);
+
+                //Thread.Sleep(100);
+                //采集预览光学图像
+                PreviewOpDevice(0, RealDataCallBack);
+            }
+            else if (WindowState == FormWindowState.Minimized)
+            {
+
+                for (int i = 0; i < Globals.systemParam.deviceCount; i++)
+                {
+                    //isShowIRImageFlags[i] = false;//设置显示红外图像标志
+                    //socketReceiveFlags[i] = false;                
+
+                    //如果正在预览光学图像，停止预览，并设置mRealHandles为-1
+                    if (mRealHandles[i] >= 0)
+                    {
+                        CHCNetSDK.NET_DVR_StopRealPlay(mRealHandles[i]);
+                        mRealHandles[i] = -1;
+                    }
+
+                    //CHCNetSDK.NET_DVR_Cleanup();
+                }
+                //StopPrewview();
+            }
+        }
+
+
+        /// <summary>
+        ///  鼠标跟随按钮鼠标离开控件事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void mouseFollowBtn_MouseLeave(object sender, EventArgs e)
+        {
+
+            if (!mouseFollowFlag)
+            {
+                SetButtonImg(mouseFollowBtn, "鼠标跟随.png");
+            }
+        }
+
+        /// <summary>
+        /// 鼠标跟随按钮鼠标在控件内事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void mouseFollowBtn_MouseHover(object sender, EventArgs e)
+        {
+            SetButtonImg(mouseFollowBtn, "鼠标跟随1.png");
+        }
+
+        /// <summary>
+        /// 鼠标跟随按钮点击事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void mouseFollowBtn_Click(object sender, EventArgs e)
+        {
+            ////录像保存路径和文件名 the path and file name to save
+            //string sVideoFileName;
+            //sVideoFileName = "Record_test.mp4";
+
+            //if (m_bRecord == false)
+            //{
+            //    //强制I帧 Make a I frame
+            //     //通道号 Channel number
+            //    CHCNetSDK.NET_DVR_MakeKeyFrame(mUserIDs[0], 1);
+
+            //    //开始录像 Start recording
+            //    if (!CHCNetSDK.NET_DVR_SaveRealData(mRealHandles[0], sVideoFileName))
+            //    {
+            //        iLastErr = CHCNetSDK.NET_DVR_GetLastError();
+            //        str = "NET_DVR_SaveRealData failed, error code= " + iLastErr;
+            //        MessageBox.Show(str);
+            //        return;
+            //    }
+            //    else
+            //    {
+
+            //        m_bRecord = true;
+            //    }
+            //}
+            //else
+            //{
+            //    //停止录像 Stop recording
+            //    if (!CHCNetSDK.NET_DVR_StopSaveRealData(mRealHandles[0]))
+            //    {
+            //        iLastErr = CHCNetSDK.NET_DVR_GetLastError();
+            //        str = "NET_DVR_StopSaveRealData failed, error code= " + iLastErr;
+            //        MessageBox.Show(str);
+            //        return;
+            //    }
+            //    else
+            //    {
+            //        str = "Successful to stop recording and the saved file is " + sVideoFileName;
+            //        MessageBox.Show(str);                   
+            //        m_bRecord = false;
+            //    }
+            //}
+
+            //return;
+            //没有开始采集，返回
+            if (!isStartPrewview)
+            {
+                return;
+            }
+
+            if (!mouseFollowFlag)
+            {
+                mouseFollowFlag = true;
+                SetButtonImg(mouseFollowBtn, "鼠标跟随1.png");
+            }
+            else
+            {
+                mouseFollowFlag = false;
+                SetButtonImg(mouseFollowBtn, "鼠标跟随.png");
+            }
+        }
+
+
+        /// <summary>
+        /// 停止录制视频按钮鼠标离开控件事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void stopRecordBtn_MouseLeave(object sender, EventArgs e)
+        {
+            SetButtonImg(stopRecordBtn, "停止录制.png");
+        }
+
+        /// <summary>
+        ///  鼠标跟随按钮停止录制视频按钮鼠标在控件内事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void stopRecordBtn_MouseHover(object sender, EventArgs e)
+        {
+            SetButtonImg(stopRecordBtn, "停止录制1.png");
+        }
+
+        /// <summary>
+        /// 停止录制视频按钮点击事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void StopRecordBtn_Click(object sender, EventArgs e)
+        {
+            if (saveVideoFlag)
+            {
+                //停止录像 Stop recording
+                if (!CHCNetSDK.NET_DVR_StopSaveRealData(mRealHandles[0]))
+                {
+                    iLastErr = CHCNetSDK.NET_DVR_GetLastError();
+                    str = "NET_DVR_StopSaveRealData failed, error code= " + iLastErr;
+                    MessageBox.Show(str);
+                    return;
+                }
+                else
+                {
+                    str = "Successful to stop recording and the saved file is " + sVideoFileName;
+                    MessageBox.Show(str);
+
+                }
+
+                saveVideoFlag = false;
+                SetButtonImg(startRecordBtn, "开始录制-line.png");
+            }
+        }
+
+        /// <summary>
+        ///  开始录制视频按钮鼠标离开控件事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void StartRecordBtn_MouseLeave(object sender, EventArgs e)
+        {
+            if (!saveVideoFlag)
+            {
+                SetButtonImg(startRecordBtn, "开始录制-line.png");
+            }
+        }
+
+        /// <summary>
+        ///  开始录制视频鼠标在控件内事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void StartRecordBtn_MouseHover(object sender, EventArgs e)
+        {
+            SetButtonImg(startRecordBtn, "开始录制-line(1).png");
+        }
+
+
+        private string ConnectSocket(IPEndPoint ipep, Socket sock)
+        {
+            string exmessage = "";
+            try
+            {
+                sock.Connect(ipep);
+            }
+            catch (System.Exception ex)
+            {
+                exmessage = ex.Message;
+            }
+            finally
+            {
+            }
+
+            return exmessage;
+        }
+
+
+        private void Receive(object deviceNum)
+        {
+            int num = (int)deviceNum;
+            int test = 0;
+            //double min, max, avg;
+            //int maxx, maxy, minx, miny;
+            try
+            {
+                while (socketReceiveFlags[num])
+                {
+                    // a8Lists[num].Get_comp_temp(out com_temp);
+                    //Console.WriteLine("设备温补" + com_temp);
+
+
+                    byte[] buffer = new byte[1024 * 1024];
+                    int r = sockets[num].Receive(buffer);
+                    test = r;
+                    //Console.WriteLine("读取到数据");
+                    //Console.WriteLine(r);
+
+
+                    if (r == 0)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        Array.Copy(buffer, 0, dataBuffers[num], contentSizes[num], r);
+
+                        if (dataBuffers[num][0] == 43 && dataBuffers[num][1] == 84 && dataBuffers[num][2] == 69 && dataBuffers[num][3] == 77 && dataBuffers[num][4] == 80)
+                        {
+                            receiveFlags[num] = true;
+                            //存了数据个数
+                            contentSizes[num] = contentSizes[num] + r;
+                            //Console.WriteLine("目前存储数据");
+                            //Console.WriteLine(contentSizes[num]);
+                        }
+                        else
+                        {
+                            receiveFlags[num] = false;
+                            contentSizes[num] = 0;
+                            Array.Clear(dataBuffers[num], 0, dataBuffers[num].Length);
+
+                        }
+                        //dataBuffer
+                        if (receiveFlags[num])
+                        {
+
+                            //int min, max, avg;
+                            byte[] Lbuffer = new byte[4];
+                            Array.Copy(dataBuffers[num], 8, Lbuffer, 0, 4);
+                            int bodySize = BitConverter.ToInt32(Lbuffer, 0);//从包头里面分析出包体的长度
+                            //Console.WriteLine("包体长度");
+                            //Console.WriteLine(bodySize);
+                            ////缓存区小于9个字节，表示连表头都无法解析
+                            //if (contentSize <= 9) return;
+                            ////缓存区中的数据，不够解析一条完整的数据
+                            //if (contentSize - 9 < bodySize) return;
+
+                            if (contentSizes[num] <= 24 || contentSizes[num] - 24 < bodySize)
+                            {
+
+                            }
+                            else
+                            {
+                                if (dataBuffers[num][0] == 43 && dataBuffers[num][1] == 84 && dataBuffers[num][2] == 69 && dataBuffers[num][3] == 77 && dataBuffers[num][4] == 80)
+                                {
+
+                                    byte[] Cbuffer = new byte[bodySize];
+                                    Array.Copy(dataBuffers[num], 24, Cbuffer, 0, bodySize);
+
+                                    Int16[] tempdate = new Int16[384 * 288];
+                                    ByteToInt16(Cbuffer, Cbuffer.Length, ref tempdate);
+                                    //realTemp = new int[256, 192];
+                                    realTemps[num] = new int[384, 288];
+                                    for (int i = 0; i < 384; i++)
+                                    {
+                                        for (int j = 0; j < 288; j++)
+                                        {
+                                            // ShortToUnsignedInt
+                                            //realTemp[i][j] = (0xff & tempData[j * infraredImageWidth + i]) | (0xff00 & (tempData[j * infraredImageWidth + i + infraredImageWidth * infraredImageHeight] << 8)) & 0xffff;
+
+                                            realTemps[num][i, j] = tempdate[j * 384 + i];
+
+
+                                        }
+                                    }
+                                    double f = realTemps[num][321, 0] / 10.0f;
+                                    //SetValue((Convert.ToString(f)));
+                                    string s = f.ToString("F1");
+                                    //Convert.ToString(f);
+                                    //Console.WriteLine("(100,100)温度" + s);
+                                    //MessageBox.Show(s);
+                                    //把剩余的数据Copy到缓存区头部位置
+                                    Array.Copy(dataBuffers[num], 24 + bodySize, dataBuffers[num], 0, contentSizes[num] - 24 - bodySize);
+                                    contentSizes[num] = contentSizes[num] - 24 - bodySize;
+
+                                    byte[] Testbuffer = new byte[contentSizes[num]];
+                                    Array.Copy(dataBuffers[num], 0, Testbuffer, 0, contentSizes[num]);
+
+                                    //Console.WriteLine("已存数据");
+                                    //Console.WriteLine(contentSizes[num]);
+                                    //Console.WriteLine(min);
+                                    //i = byteto(buffer).Length;
+                                    //Console.WriteLine(i);
+                                    //MessageBox.Show(min.ToString("0.0"));
+                                }
+                            }
+                        }
+                    }
+
+                    Thread.Sleep(100);
+                }
+            }
+            catch (Exception ex)
+            {
+
+                Globals.Log("接收消息失败" + ex.ToString());
+                Globals.Log("目标数组长度：" + dataBuffers[num].Length + "destIndex：" + contentSizes[num] + "r:" + test);
+                //MessageBox.Show("接收消息失败" + ex.ToString());
+            }
+        }
+
+        /// <summary>
+        /// 基于TCP协议的原始温度数据
+        /// </summary>
+        /// <param name="deviceNum"></param>
+        private void ConnectSocketToReceiveTemp(int deviceNum)
+        {
+
+            try
+            {
+                sockets[deviceNum] = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                IPAddress ip = IPAddress.Parse(ipList[deviceNum]);
+                IPEndPoint point = new IPEndPoint(ip, Convert.ToInt32("8081"));
+
+                ConnectSocketDelegate connect = ConnectSocket;
+                IAsyncResult asyncResult = connect.BeginInvoke(point, sockets[deviceNum], null, null);
+
+
+                bool connectSuccess = asyncResult.AsyncWaitHandle.WaitOne(1000, false);
+                if (!connectSuccess)
+                {
+                    Globals.Log("设备" + deviceNum + "连接超时");
+                    return;
+                }
+
+                string exmessage = connect.EndInvoke(asyncResult);
+                if (!string.IsNullOrEmpty(exmessage))
+                {
+                    Globals.Log("设备" + deviceNum + "连接失败" + "错误信息：" + exmessage);
+                }
+                else
+                {
+                    threadsReceiveTmp[deviceNum] = new Thread(new ParameterizedThreadStart(Receive));
+                    threadsReceiveTmp[deviceNum].IsBackground = true;
+                    threadsReceiveTmp[deviceNum].Start(deviceNum);
+                    socketReceiveFlags[deviceNum] = true;
+                }
+            }
+            catch (Exception e)
+            {
+                Globals.Log("设备" + deviceNum + "连接失败" + e.ToString());
+            }
+        }
+
+        private void ByteToInt16(Byte[] arrByte, int nByteCount, ref Int16[] destInt16Arr)
+        {
+            //按两个字节⼀个整数解析，前⼀字节当做整数⾼位，后⼀字节当做整数低位
+            //for (int i = 0; i < nByteCount / 2; i++)
+            //{
+            //    destInt16Arr[i] = Convert.ToInt16(arrByte[2 * i + 0] << 8 + arrByte[2 * i + 1]);
+            //}
+            int i = 0;
+            try
+            {
+                //按两个字节一个整数解析，前一字节当做整数低位，后一字节当做整数高位，调用系统函数转化
+                for (i = 0; i < nByteCount / 2; i++)
+                {
+                    Byte[] tmpBytes = new Byte[2] { arrByte[2 * i + 0], arrByte[2 * i + 1] };
+                    destInt16Arr[i] = BitConverter.ToInt16(tmpBytes, 0);
+                }
+            }
+            catch (Exception e)
+            {
+                //MessageBox.Show("Byte to Int16转化错误！i=" + e.Message + i.ToString());
+            }
+
+        }
+
+
+
+        /// <summary>
+        /// 开始录制视频按钮点击事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void StartRecordBtn_Click(object sender, EventArgs e)
+        {
+            if (!isStartPrewview)
+            {
+                return;
+            }
+            if (!saveVideoFlag)
+            {
+                recordName = GetIrImageFilePath(Globals.RecordDirectoryPath, 0, "_IR.avi");
+                //string filePath = saveFilePath();
+                //if (recordName == "")
+                //{
+                //    return;
+                //}
+                // recordName = filePath + ".avi";
+
+                //利用VideoWriter对象 录制视频  红外视频帧频25HZ，分辨率768*576      
+                writer = new VideoWriter(recordName, FourCC.MJPG, 15, new OpenCvSharp.Size(768, 576), true);
+                saveVideoFlag = true;
+            }
+
+            ////录像保存路径和文件名 the path and file name to save
+
+
+            sVideoFileName = GetIrImageFilePath(Globals.RecordDirectoryPath, 0, "_OP.mp4");
+            CHCNetSDK.NET_DVR_MakeKeyFrame(mUserIDs[0], 1);
+            if (!CHCNetSDK.NET_DVR_SaveRealData(mRealHandles[0], sVideoFileName))
+            {
+                iLastErr = CHCNetSDK.NET_DVR_GetLastError();
+                str = "NET_DVR_SaveRealData failed, error code= " + iLastErr;
+                MessageBox.Show(str);
+                return;
+            }
+
+
+            SetButtonImg(startRecordBtn, "开始录制-line(1).png");
+        }
+
+        /// <summary>
+        /// 停止采集按钮鼠标离开控件事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void StopPrewviewBtn_MouseLeave(object sender, EventArgs e)
+        {
+            SetButtonImg(stopPrewviewBtn, "stop.png");
+        }
+
+        /// <summary>
+        /// 停止采集按钮鼠标在控件内事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void StopPrewviewBtn_MouseHover(object sender, EventArgs e)
+        {
+            SetButtonImg(stopPrewviewBtn, "stopPressed.png");
+        }
+
+
+
+        /// <summary>
+        /// 开始采集按钮鼠标在控件内事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void StartPrewviewBtn_MouseHover(object sender, EventArgs e)
+        {
+            SetButtonImg(startPrewviewBtn, "开始(1).png");
+        }
+
+        /// <summary>
+        /// 开始采集按钮鼠标离开控件事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void StartPrewviewBtn_MouseLeave(object sender, EventArgs e)
+        {
+            if (!isStartPrewview)
+            {
+                SetButtonImg(startPrewviewBtn, "开始 .png");
+            }
+        }
+
+
+        /// <summary>
+        /// 开始采集按钮点击事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void StartPrewviewBtn_Click(object sender, EventArgs e)
+        {
+            StartPrewview();
+        }
+
+        /// <summary>
+        /// 停止采集按钮点击事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void StopPrewviewBtn_Click(object sender, EventArgs e)
+        {
+            if (isStartPrewview)
+            {
+                StopPrewview();
+            }
+        }
+
+        /// <summary>
+        /// 开启红外视频解码线程
+        /// </summary>
+        /// <param name="num">设备号，从0开始</param>
+        private void DecodingIRImage(int num)
+        {
+
+            thPlayer = new Thread(DeCoding);
+            thPlayer.IsBackground = true;
+            thPlayer.Start();
+
+            //ParameterizedThreadStart thStart = new ParameterizedThreadStart(DeCoding);//threadStart委托 
+            //Thread thread = new Thread(thStart);
+            ////thread.Priority = ThreadPriority.Highest;
+            //thread.IsBackground = true; //关闭窗体继续执行
+            //thread.Start(num);
+        }
+
+        /// <summary>
+        /// 开启预览红外图像线程
+        /// </summary>
+        /// <param name="num">设备号，从0开始</param>
+        private void PreviewIRImage(int num)
+        {
+            ParameterizedThreadStart thStart = new ParameterizedThreadStart(ShowIRImageThreadProc);//threadStart委托 
+            Thread thread = new Thread(thStart);
+            //thread.Priority = ThreadPriority.Highest;
+            thread.IsBackground = true; //关闭窗体继续执行
+            thread.Start(num);
+        }
+
+
+
+        private void StartPrewview()
+        {
+            isStartPrewview = true;
+
+            thPlayer = new Thread(DeCoding);
+            thPlayer.IsBackground = true;
+            thPlayer.Start();
 
             Thread.Sleep(100);
 
+            ParameterizedThreadStart thStart = new ParameterizedThreadStart(ShowIRImageThreadProc);//threadStart委托 
+            Thread thread = new Thread(thStart);
+            //thread.Priority = ThreadPriority.Highest;
+            thread.IsBackground = true; //关闭窗体继续执行
+            thread.Start(0);
+
+            SetButtonImg(startPrewviewBtn, "开始(1).png");
+            //登录光学相机
+            LoginOpDevice(0, Globals.systemParam.op_ip_1, Globals.systemParam.op_username_1, Globals.systemParam.op_psw_1, Globals.systemParam.op_port_1, cbLoginCallBack);
+
+            Thread.Sleep(100);
+            //采集预览光学图像
+            PreviewOpDevice(0, RealDataCallBack);
+
+            ConnectSocketToReceiveTemp(0);
+
+            Thread GetTmpThread = new Thread(GetTmp);
+            GetTmpThread.IsBackground = true;
+            GetTmpThread.Start();
+            //设备校时
+            Timing();
+        }
+
+        private void GetTmp()
+        {
+            while (isShowIRImageFlags[0])
+            {
+                a8Lists[0].Get_globa_temp(out globa_Temp);//获取全局温度信息
+                Thread.Sleep(100);
+            }
+
+        }
+
+        /// <summary>
+        /// 停止采集预览
+        /// </summary>
+        private void StopPrewview()
+        {
+            isStartPrewview = false;//设置停止采集标志位false   
+            saveVideoFlag = false;
 
             if (thPlayer != null)
             {
@@ -170,44 +834,140 @@ namespace A8_TEST
 
                 thPlayer = null;
             }
-            else
-            {
-                thPlayer = new Thread(DeCoding);
-                thPlayer.IsBackground = true;
-                thPlayer.Start();
 
+            for (int i = 0; i < Globals.systemParam.deviceCount; i++)
+            {
+                isShowIRImageFlags[i] = false;//设置显示红外图像标志
+                socketReceiveFlags[i] = false;
+
+                //如果已经登录光学设备，登出，同时设置userId为-1
+                if (mUserIDs[i] >= 0)
+                {
+                    CHCNetSDK.NET_DVR_Logout(mUserIDs[i]);
+                    mUserIDs[i] = -1;
+
+                }
+
+                //如果正在预览光学图像，停止预览，并设置mRealHandles为-1
+                if (mRealHandles[i] >= 0)
+                {
+                    CHCNetSDK.NET_DVR_StopRealPlay(mRealHandles[i]);
+                    mRealHandles[i] = -1;
+                }
+
+                CHCNetSDK.NET_DVR_Cleanup();
+
+                //图像预览控件清空，不显示图像
+                pics[i * 2].Image = null;
+                pics[i * 2 + 1].Image = null;
+
+                irImageLists[i].Clear();
             }
 
-            //ParameterizedThreadStart thStart = new ParameterizedThreadStart(ShowIRImageThreadProc);//threadStart委托 
-            Thread thread = new Thread(ShowIRImageThreadProc);
-            //thread.Priority = ThreadPriority.Highest;
-            thread.IsBackground = true; //关闭窗体继续执行
-            thread.Start();
+            //停止保存报警图像定时器
+            timer3.Enabled = false;
+
+            //设置监控界面功能按钮的图像
+
+            SetButtonImg(startPrewviewBtn, "开始 .png");
+            SetButtonImg(stopPrewviewBtn, "stopPressed.png");
+            SetButtonImg(startRecordBtn, "开始录制-line.png");
+        }
+
+        private string saveFilePath()
+        {
+            string filePath = "";
+            // 创建保存对话框
+            SaveFileDialog saveDataSend = new SaveFileDialog();
+            saveDataSend.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);   // 获取文件路径
+            if (saveDataSend.ShowDialog() == DialogResult.OK)   // 显示文件框，并且选择文件
+            {
+                filePath = saveDataSend.FileName.Replace("\\", "/");   // 获取文件名
+            }
+            return filePath;
 
         }
 
-        private void ShowIRImageThreadProc()
+        /// <summary>
+        /// 设置按钮图片
+        /// </summary>
+        /// <param name="btn"></param>
+        /// <param name="imageName"></param>
+        private void SetButtonImg(UISymbolButton btn, string imageName)
+        {
+            btn.Image = Image.FromFile(Globals.startPathInfo.FullName + "\\Resources\\" + imageName);
+        }
+
+        /// <summary>
+        /// 设备校时
+        /// </summary>
+        private void Timing()
+        {
+            A8SDK.time_param time_Param = new A8SDK.time_param();
+
+            time_Param.year = DateTime.Now.Year;
+            time_Param.month = (char)DateTime.Now.Month;
+            time_Param.day = (char)DateTime.Now.Day;
+
+            time_Param.hour = (char)DateTime.Now.Hour;
+            time_Param.minute = (char)DateTime.Now.Minute;
+            time_Param.second = (char)DateTime.Now.Second;
+
+            a8Lists[0].Set_time(time_Param);
+
+            m_struTimeCfg.dwYear = DateTime.Now.Year; ;
+            m_struTimeCfg.dwMonth = DateTime.Now.Month;
+            m_struTimeCfg.dwDay = DateTime.Now.Day;
+            m_struTimeCfg.dwHour = DateTime.Now.Hour;
+            m_struTimeCfg.dwMinute = DateTime.Now.Minute;
+            m_struTimeCfg.dwSecond = DateTime.Now.Second;
+
+            Int32 nSize = Marshal.SizeOf(m_struTimeCfg);
+            IntPtr ptrTimeCfg = Marshal.AllocHGlobal(nSize);
+            Marshal.StructureToPtr(m_struTimeCfg, ptrTimeCfg, false);
+
+            if (!CHCNetSDK.NET_DVR_SetDVRConfig(mUserIDs[0], CHCNetSDK.NET_DVR_SET_TIMECFG, -1, ptrTimeCfg, (UInt32)nSize))
+            {
+                iLastErr = CHCNetSDK.NET_DVR_GetLastError();
+                str = "NET_DVR_SET_TIMECFG failed, error code= " + iLastErr;
+                //设置时间失败，输出错误号 Failed to set the time of device and output the error code
+                MessageBox.Show(str);
+            }
+            else
+            {
+                //MessageBox.Show("校时成功！");
+            }
+
+            Marshal.FreeHGlobal(ptrTimeCfg);
+        }
+
+
+        private void ShowIRImageThreadProc(object deviceNum)
         {
 
             int i = 0;
             int j = 0;
-            
-            while (true)
+            int num = (int)deviceNum;
+            while (isShowIRImageFlags[num])
             {
                 try
                 {
+                    //Console.WriteLine(DateTime.Now);
+                    //Console.WriteLine("irImageLists[num].Count" + irImageLists[num].Count);
                     //红外图像集合长度不为0
-                    if (imageList.Count > 0)
-                    {
 
+                    if (irImageLists[num].Count > 0)
+                    {
+                        //Console.WriteLine("  Console.WriteLine(irImageLists[num].Count);" + irImageLists[num].Count);
                         //this.Invoke(new MethodInvoker(() =>
                         //{
-                        Bitmap bitmap = (Bitmap)imageList[0].Clone();
+                        Bitmap bitmap = (Bitmap)irImageLists[num][0].Clone();
 
                         //Console.WriteLine("bitmap.Width" + bitmap.Width);
 
                         if (bitmap != null)
                         {
+
                             using (Graphics gfx = Graphics.FromImage(bitmap))
                             {
 
@@ -235,18 +995,20 @@ namespace A8_TEST
                                 }
                                 else//温度低于报警阈值时，关闭保存图像定时器
                                 {
+                                    if (saveAlarmImageFlag)
+                                    {
+                                        this.Invoke((MethodInvoker)delegate
+                                        {
+                                            timer3.Enabled = false;
+                                            timer3.Stop();
+                                        });
+
+                                        saveAlarmImageFlag = false;
+                                    }
                                     i = 0;
                                     j = 0;
-
-                                    this.Invoke((MethodInvoker)delegate
-                                    {
-                                        timer3.Enabled = false;
-                                        timer3.Stop();
-                                    });
-
-                                    saveAlarmImageFlag = false;
-
                                 }
+
                                 //Console.WriteLine("maxTempX = " + globa_Temps[num].max_temp_x + "maxTempY" + globa_Temps[num].max_temp_y);
                                 float maxTempX = globa_Temp.max_temp_x * pt;
                                 float maxTempY = globa_Temp.max_temp_y * pt;
@@ -275,8 +1037,11 @@ namespace A8_TEST
 
                                 if (saveImageFlag)
                                 {
-                                    string IrImagePath = GetIrImageFilePath(Globals.ImageDirectoryPath, 0);
+                                    string IrImagePath = GetIrImageFilePath(Globals.ImageDirectoryPath, 0, "_IR.bmp");
+
                                     bitmap.Save(IrImagePath, System.Drawing.Imaging.ImageFormat.Bmp);
+
+                                    SaveOpImage(0, Globals.ImageDirectoryPath, mRealHandles[0], 1);
                                     saveImageFlag = false;
                                 }
 
@@ -284,7 +1049,7 @@ namespace A8_TEST
                                 //保存报警图像
                                 if (saveAlarmImageFlag)
                                 {
-                                    string IrImagePath = GetIrImageFilePath(Globals.AlarmImageDirectoryPath, 0);
+                                    string IrImagePath = GetIrImageFilePath(Globals.AlarmImageDirectoryPath, 0, "_IR.bmp");
                                     bitmap.Save(IrImagePath, System.Drawing.Imaging.ImageFormat.Bmp);
 
                                     if (j == 0)
@@ -305,53 +1070,54 @@ namespace A8_TEST
                                 }
 
                                 Bitmap b = (Bitmap)bitmap.Clone();
-                                pics[0].Image = bitmap;
+                                pics[num].Image = bitmap;
 
 
                                 //鼠标跟随
-                                //if (mouseFollowFlag)
-                                //{
-                                //    //鼠标在图像内
-                                //    if (isInPic)
-                                //    {
-                                //        float tempX = picMouseX[num];
-                                //        float tempY = picMouseY[num];
-                                //        string temp = (realTemps[0][(int)tempMouseX[num], (int)tempMouseY[num]] * 1.0f / 10).ToString("F1");
-                                //        SizeF tempStringSize = gfx.MeasureString(temp, font);
+                                if (mouseFollowFlag)
+                                {
+                                    //鼠标在图像内
+                                    if (isInPic)
+                                    {
+                                        Console.WriteLine("isInPic");
+                                        float tempX = picMouseX[num];
+                                        float tempY = picMouseY[num];
+                                        string temp = (realTemps[0][(int)tempMouseX[num], (int)tempMouseY[num]] * 1.0f / 10).ToString("F1");
+                                        SizeF tempStringSize = gfx.MeasureString(temp, font);
 
-                                //        float locX = tempX * 1.0f / pics[num].Width * b.Width;
-                                //        float locY = tempY * 1.0f / pics[num].Height * b.Height;
+                                        float locX = tempX * 1.0f / pics[num].Width * b.Width;
+                                        float locY = tempY * 1.0f / pics[num].Height * b.Height;
 
-                                //        ////超出边界，调整显示位置
-                                //        if (locX + tempStringSize.Width > b.Width)
-                                //        {
-                                //            locX = locX - tempStringSize.Width - 10;
-                                //        }
+                                        ////超出边界，调整显示位置
+                                        if (locX + tempStringSize.Width > b.Width)
+                                        {
+                                            locX = locX - tempStringSize.Width - 10;
+                                        }
 
-                                //        if (locY + tempStringSize.Height > b.Height)
-                                //        {
-                                //            locY = locY - tempStringSize.Height - 10;
-                                //        }
+                                        if (locY + tempStringSize.Height > b.Height)
+                                        {
+                                            locY = locY - tempStringSize.Height - 10;
+                                        }
 
-                                //        gfx.DrawString(temp, font, brush, locX + 10, locY + 10);
-                                //    }
-                                //}
+                                        gfx.DrawString(temp, font, brush, locX + 10, locY + 10);
+                                    }
+                                }
 
                                 //保存红外视频
-                                //if (saveVideoFlag)
-                                //{
-                                //    try
-                                //    {
-                                //        Console.WriteLine(writer.IsOpened());
-                                //        var mat = BitmapConverter.ToMat(b);
-                                //        ///Mat mat = Bitmap2Mat(bitmap);
-                                //        writer.Write(mat);
-                                //    }
-                                //    catch (Exception ex)
-                                //    {
-                                //        MessageBox.Show("录制视频失败" + ex.ToString());
-                                //    }
-                                //}
+                                if (saveVideoFlag)
+                                {
+                                    try
+                                    {
+                                        Console.WriteLine(writer.IsOpened());
+                                        var mat = BitmapConverter.ToMat(b);
+                                        ///Mat mat = Bitmap2Mat(bitmap);
+                                        writer.Write(mat);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        MessageBox.Show("录制视频失败" + ex.ToString());
+                                    }
+                                }
 
                                 b = null;
                                 bitmap = null;
@@ -360,21 +1126,30 @@ namespace A8_TEST
                         }
                         //}));
                         //红外图像集合数量大于5，删除多余图像，防止阻塞
-                        if (imageList.Count > 3)
+                        //Console.WriteLine("irImageLists[num].Count" + irImageLists[num].Count);
+                        if (irImageLists[num].Count > 1)
                         {
-                            imageList.RemoveRange(0, imageList.Count - 3);
+                            irImageLists[num].RemoveRange(0, irImageLists[num].Count - 1);
                         }
 
                         //irImageLists[num].RemoveAt(0);
                     }
 
+                    else
+                    {
+                        Globals.Log("irImageLists[num].Count == 0");
+                    }
+
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex.ToString());
+                    Globals.Log("显示红外图像失败" + ex.ToString());
+                    //Console.WriteLine(ex.ToString());
                 }
-                Thread.Sleep(50);
+                Thread.Sleep(35);
             }
+
+            Globals.Log("红外图像显示线程结束");
         }
 
         private void PreviewOpDevice(int deviceNum, CHCNetSDK.REALDATACALLBACK realCallback)
@@ -393,7 +1168,7 @@ namespace A8_TEST
                 lpPreviewInfo.dwStreamType = 0;//码流类型：0-主码流，1-子码流，2-码流3，3-码流4，以此类推
                 lpPreviewInfo.dwLinkMode = 0;//连接方式：0- TCP方式，1- UDP方式，2- 多播方式，3- RTP方式，4-RTP/RTSP，5-RSTP/HTTP 
                 lpPreviewInfo.bBlocked = true; //0- 非阻塞取流，1- 阻塞取流
-                lpPreviewInfo.dwDisplayBufNum = 1; //播放库播放缓冲区最大缓冲帧数
+                lpPreviewInfo.dwDisplayBufNum = 5; //播放库播放缓冲区最大缓冲帧数
                 lpPreviewInfo.byProtoType = 0;
                 lpPreviewInfo.byPreviewMode = 0;
 
@@ -414,7 +1189,7 @@ namespace A8_TEST
                 IntPtr pUser = new IntPtr();//用户数据
 
                 //打开预览 Start live view 
-                mRealHandles[deviceNum] = CHCNetSDK.NET_DVR_RealPlay_V40(mUserIDs[deviceNum], ref lpPreviewInfo, null/*RealData*/, pUser);
+                mRealHandles[deviceNum] = CHCNetSDK.NET_DVR_RealPlay_V40(mUserIDs[deviceNum], ref lpPreviewInfo, null/*RealDatas[deviceNum]*/, pUser);
                 if (mRealHandles[deviceNum] < 0)
                 {
                     iLastErr = CHCNetSDK.NET_DVR_GetLastError();
@@ -458,7 +1233,7 @@ namespace A8_TEST
             if (dwBufSize > 0)
             {
 
-
+                Console.WriteLine("dwBufSize" + dwBufSize);
                 //byte[] sData = new byte[dwBufSize];
                 //Marshal.Copy(pBuffer, sData, 0, (Int32)dwBufSize);
 
@@ -608,12 +1383,15 @@ namespace A8_TEST
         private void Form1_Load(object sender, EventArgs e)
         {
             this.DoubleBuffered = true;
- 
+
         }
 
         private void Timer1_Tick(object sender, EventArgs e)
         {
-            a8.Get_globa_temp(out globa_Temp);//获取全局温度信息
+            a8Lists[0].Get_globa_temp(out globa_Temp);//获取全局温度信息
+                                                      //Console.WriteLine(DateTime.Now);
+                                                      //Console.WriteLine(globa_Temp.max_temp);
+
         }
 
         private void Timer3_Tick(object sender, EventArgs e)
@@ -661,128 +1439,30 @@ namespace A8_TEST
         [Obsolete]
         private unsafe void DeCoding()
         {
+
             try
             {
-                Console.WriteLine("DeCoding run...");
+                //Console.WriteLine("DeCoding run...");
                 Bitmap oldBmp = null;
+                isShowIRImageFlags[0] = true;
 
-                //int i = 0;
-                //int j = 0;
                 // 更新图片显示
                 tstRtmp.ShowBitmap show = (bmp) =>
                 {
-                    imageList.Add((Bitmap)bmp.Clone());
-                    //this.Invoke(new MethodInvoker(() =>
+                    //Console.WriteLine(DateTime.Now);
+                    // pics[0].Image = bmp;
+                    
+                    irImageLists[0].Add((Bitmap)bmp.Clone());
+
+                    //if (oldBmp != null)
                     //{
-                    //    using (Graphics gfx = Graphics.FromImage(bmp))
-                    //    {
-
-                    //        if (bmp != null)
-                    //        {
-
-                    //            // 设置文字的格式
-                    //            Font font = new Font("Arial", 12);
-                    //            Brush brush = Brushes.Red;
-                    //            Pen pen = new Pen(Color.Red, 2);
-
-                    //            string maxTemp;
-                    //            PointF point;
-                    //            float pt = 2.0f; //显示水平缩放比例温度数据是384 * 288，视频图像768 * 576      
-
-                    //            maxTemp = ((float)globa_Temp.max_temp / 10).ToString("F1");//全局最高温度
-                    //            float max = float.Parse(maxTemp);
+                    //    oldBmp.Dispose();
+                    //}
+                    //oldBmp = bmp;
 
 
-                    //            //图像最高温度大于设定的高温报警阈值，保存图像
-                    //            if (max >= Globals.systemParam.alarm_1)
-                    //            {
-                    //                if (i == 0)
-                    //                {
-                    //                    saveAlarmImageFlag = true;
-                    //                    alertFlag = true;
-                    //                    i = 1;
-                    //                }
-
-                    //            }
-                    //            else//温度低于报警阈值时，关闭保存图像定时器
-                    //            {
-                    //                i = 0;
-                    //                j = 0;
-
-                    //                this.Invoke((MethodInvoker)delegate
-                    //                {
-                    //                    //timer3.Enabled = false;
-                    //                    //timer3.Stop();
-                    //                });
-
-                    //                saveAlarmImageFlag = false;
-
-                    //            }
-
-
-                    //            float maxTempX = globa_Temp.max_temp_x * pt;
-                    //            float maxTempY = globa_Temp.max_temp_y * pt;
-
-                    //            SizeF maxTempStringSize = gfx.MeasureString(maxTemp, font);
-
-                    //            if (maxTempX + maxTempStringSize.Width > bmp.Width)
-                    //            {
-                    //                maxTempX = maxTempX - maxTempStringSize.Width;
-                    //            }
-
-                    //            if (maxTempY + maxTempStringSize.Height > bmp.Height)
-                    //            {
-                    //                maxTempY = maxTempY - maxTempStringSize.Height;
-                    //            }
-
-                    //            point = new PointF(maxTempX, maxTempY);
-
-                    //            gfx.DrawString(maxTemp, font, brush, point);
-
-                    //            DrawCrossLine(gfx, globa_Temp.max_temp_x * pt, globa_Temp.max_temp_y * pt, pen, 10);
-
-                    //            //保存报警图像
-     
-
-
-                    //        }
-
-                    //    }
-
-                    //    pics[0].Image = bmp;
-
-                    //    //if (saveAlarmImageFlag)
-                    //    //{
-                    //    //    string IrImagePath = GetIrImageFilePath(Globals.AlarmImageDirectoryPath, 0);
-                    //    //    bmp.Save(IrImagePath, System.Drawing.Imaging.ImageFormat.Bmp);
-
-                    //    //    if (j == 0)
-                    //    //    {
-                    //    //        SaveOpImage(0, Globals.AlarmImageDirectoryPath, mRealHandles[0], 1);
-                    //    //        this.Invoke((MethodInvoker)delegate
-                    //    //        {
-                    //    //            //开启定时器，定时保存图像
-                    //    //            timer3.Enabled = true;
-                    //    //            timer3.Start();
-                    //    //        });
-
-                    //    //        j = 1;
-                    //    //    }
-
-                    //    //    saveAlarmImageFlag = false;
-
-                    //    //}
-                    //    if (oldBmp != null)
-                    //    {
-                    //        oldBmp.Dispose();
-                    //    }
-                    //    oldBmp = bmp;
-                    //}));
                 };
-                rtmp.Start(show, "rtsp://192.168.100.2/webcam");
-                //rtmp.StartSave(show, "rtsp://192.168.100.2/webcam", "D://123//1.mp4");
-                //rtmp.Start_save(show, "rtsp://192.168.100.2/webcam", "D://123//1.mp4");
-
+                rtmp.Start(show, "rtsp://" + Globals.systemParam.ir_ip_1 + "/webcam");
 
             }
             catch (Exception ex)
@@ -792,12 +1472,62 @@ namespace A8_TEST
             finally
             {
                 Console.WriteLine("DeCoding exit");
-                this.Invoke(new MethodInvoker(() =>
-                {
-                    //button_play.Text = "停止播放";
-                    //button_play.Enabled = true;
-                }));
             }
+        }
+
+        private void ClosePictureBox2_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                for (int i = 0; i < Globals.systemParam.deviceCount; i++)
+                {
+                    isShowIRImageFlags[i] = false;
+                    socketReceiveFlags[i] = false;
+
+                    if (sockets[i] != null)
+                    {
+                        sockets[i].Close();
+                    }
+
+
+                    if (mRealHandles[i] >= 0)
+                    {
+                        CHCNetSDK.NET_DVR_StopRealPlay(mRealHandles[i]);
+                        mRealHandles[i] = -1;
+                    }
+
+                    if (mUserIDs[i] >= 0)
+                    {
+                        CHCNetSDK.NET_DVR_Logout(mUserIDs[i]);
+                        mUserIDs[i] = -1;
+
+                    }
+
+                    if (thPlayer != null)
+                    {
+                        rtmp.Stop();
+
+                        thPlayer = null;
+                    }
+
+                    CHCNetSDK.NET_DVR_Cleanup();
+
+                    Globals.fileInfos = null;
+
+                }
+            }
+            catch (Exception ex)
+            {
+                Globals.Log("关闭窗口" + ex.ToString());
+            }
+            this.Close();
+            Application.Exit();
+            System.Environment.Exit(0);
+        }
+
+        private void PictureBox3_Click(object sender, EventArgs e)
+        {
+            this.WindowState = FormWindowState.Minimized;
         }
 
         /// <summary>
@@ -806,7 +1536,7 @@ namespace A8_TEST
         /// <param name="rootPath">根路径</param>
         /// <param name="deviceNum">设备号，从0开始</param>
         /// <returns></returns>
-        private string GetIrImageFilePath(string rootPath, int deviceNum)
+        private string GetIrImageFilePath(string rootPath, int deviceNum, string name)
         {
             string imagePath = rootPath + deviceNum;
 
@@ -817,12 +1547,10 @@ namespace A8_TEST
             }
 
             string strTime = System.DateTime.Now.ToString("yyyyMMddHHmmss");
-            string IrImagePath = imagePath + "\\" + strTime + "_IR.bmp";
+            string IrImagePath = imagePath + "\\" + strTime + name;
 
             return IrImagePath;
         }
-
-
 
 
         private void DrawCrossLine(Graphics g, float startX, float startY, Pen pen, int lineLength)
@@ -831,6 +1559,33 @@ namespace A8_TEST
             g.DrawLine(pen, startX, startY, startX - lineLength, startY);
             g.DrawLine(pen, startX, startY, startX, startY + lineLength);
             g.DrawLine(pen, startX, startY, startX, startY - lineLength);
+        }
+
+        private void UiNavBar1_MenuItemClick(string itemText, int menuIndex, int pageIndex)
+        {
+
+            Console.WriteLine("UiNavBar1_MenuItemClic" + pageIndex);
+            Console.WriteLine("isStartPrewview" + isStartPrewview);
+            if (pageIndex == PAGE_INDEX)
+            {
+                StartPrewview();
+
+                SetButtonImg(startPrewviewBtn, "开始(1).png");
+                SetButtonImg(stopPrewviewBtn, "stop.png");
+
+
+
+                //startPrewviewBtn.Image = Image.FromFile(Globals.startPathInfo.Parent.Parent.FullName + "\\Resources\\" + "开始(1).png");
+                //stopPrewviewBtn.Image = Image.FromFile(Globals.startPathInfo.Parent.Parent.FullName + "\\Resources\\" + "stop.png");
+
+            }
+            else
+            {
+                StopPrewview();
+
+            }
+
+
         }
 
         /// <summary>
@@ -902,7 +1657,58 @@ namespace A8_TEST
 
         }
 
+        private void Pics0_MouseLeave(object sender, EventArgs e)
+        {
+            //mouseFollowFlag = false;
+            isInPic = false;
+        }
 
+        private void Pics0_MouseHover(object sender, EventArgs e)
+        {
+            //this.uiToolTip1.SetToolTip(sender as PictureBox, "23.5");
+        }
+
+
+        private void Pics0_MouseMove(object sender, MouseEventArgs e)
+        {
+
+            if (!isStartPrewview)
+            {
+                return;
+            }
+
+            isInPic = true;
+            //Console.WriteLine("Pics0_MouseMove");
+
+            PictureBox pic = sender as PictureBox;
+            //Console.WriteLine("pic.Width" + pic.Width);
+
+            //// 获取鼠标在PictureBox内的位置
+            ///
+
+            picMouseX[0] = e.X;
+            picMouseY[0] = e.Y;
+
+            tempMouseX[0] = picMouseX[0] * 1.0f / (pics[0].Width) * 384;
+            tempMouseY[0] = picMouseY[0] * 1.0f / (pics[0].Height) * 288;
+
+            //// PointF pointF = new PointF(x,y);
+
+            //string temp = (realTemps[0][(int)a, (int)b] * 1.0f / 10).ToString("F1");
+            ////mousePoints.Add(pointF);
+
+            ////Graphics g = pic.CreateGraphics();
+
+            ////g.DrawEllipse(Pens.Blue, 10, 10, 100, 100); // 绘制蓝色椭圆
+            ////g.Dispose();
+
+            //Console.WriteLine("x=" + x);
+            //Console.WriteLine("y= " + y);
+
+            //// 显示坐标（可以用ToolTip或其他方式显示）
+            //this.uiToolTip1.SetToolTip(pic, temp);
+
+        }
 
         /// <summary>
         /// 设置实时监控界面图像显示控件布局
@@ -987,9 +1793,9 @@ namespace A8_TEST
                             //pics[i * 2 + j].Paint += new PaintEventHandler(Pics0_Paint);
                             //pics[i * 2 + j].Click += new EventHandler(Pics0_Click);
 
-                            //pics[i * 2 + j].MouseMove += new MouseEventHandler(Pics0_MouseMove);
-                            //pics[i * 2 + j].MouseLeave += new EventHandler(Pics0_MouseLeave);
-                            //pics[i * 2 + j].MouseHover += new EventHandler(Pics0_MouseHover);
+                            pics[i * 2 + j].MouseMove += new MouseEventHandler(Pics0_MouseMove);
+                            pics[i * 2 + j].MouseLeave += new EventHandler(Pics0_MouseLeave);
+                            pics[i * 2 + j].MouseHover += new EventHandler(Pics0_MouseHover);
                             break;
                         case 1:
                             //pics[i * 2 + j].Tag = 0;

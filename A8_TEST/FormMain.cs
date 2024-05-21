@@ -103,14 +103,14 @@ namespace A8_TEST
 
 
 
+
+
         [Obsolete]
         public FormMain()
         {
             try
             {
                 InitializeComponent();
-
-
 
                 //设置默认显示界面
                // uiNavBar1.SelectedIndex = 0;
@@ -193,22 +193,23 @@ namespace A8_TEST
         /// <param name="e"></param>
         private void mouseFollowBtn_Click(object sender, EventArgs e)
         {
-            //没有开始采集，返回
-            if (!isStartPrewview)
-            {
-                return;
-            }
 
-            if (!mouseFollowFlag)
-            {
-                mouseFollowFlag = true;
-                SetButtonImg(mouseFollowBtn, "鼠标跟随1.png");
-            }
-            else
-            {
-                mouseFollowFlag = false;
-                SetButtonImg(mouseFollowBtn, "鼠标跟随.png");
-            }
+            ////没有开始采集，返回
+            //if (!isStartPrewview)
+            //{
+            //    return;
+            //}
+
+            //if (!mouseFollowFlag)
+            //{
+            //    mouseFollowFlag = true;
+            //    SetButtonImg(mouseFollowBtn, "鼠标跟随1.png");
+            //}
+            //else
+            //{
+            //    mouseFollowFlag = false;
+            //    SetButtonImg(mouseFollowBtn, "鼠标跟随.png");
+            //}
         }
 
         /// <summary>
@@ -1123,7 +1124,7 @@ namespace A8_TEST
             //Console.WriteLine("Pics0_MouseMove");
 
             PictureBox pic = sender as PictureBox;
-            Console.WriteLine("pic.Width" + pic.Width);
+            //Console.WriteLine("pic.Width" + pic.Width);
 
             //// 获取鼠标在PictureBox内的位置
             ///
@@ -1280,7 +1281,6 @@ namespace A8_TEST
 
                             if (bmp != null)
                             {
-
 
                                 // 设置文字的格式
                                 Font font = new Font("Arial", 12);
@@ -1736,23 +1736,6 @@ namespace A8_TEST
 
         private void UiNavBar1_MenuItemClick(string itemText, int menuIndex, int pageIndex)
         {
-            Console.WriteLine("UiNavBar1_MenuItemClic" + pageIndex);
-            Console.WriteLine("isStartPrewview" + isStartPrewview);
-            if (pageIndex == PAGE_INDEX)
-            {
-                StartPrewview(0, Globals.systemParam.op_ip_1, Globals.systemParam.op_username_1, Globals.systemParam.op_psw_1, Globals.systemParam.op_port_1, cbLoginCallBack, RealDataCallBack);              
-                SetMonitorFucBtnImg("开始(1).png", "stop.png");
-                //startPrewviewBtn.Image = Image.FromFile(Globals.startPathInfo.Parent.Parent.FullName + "\\Resources\\" + "开始(1).png");
-                //stopPrewviewBtn.Image = Image.FromFile(Globals.startPathInfo.Parent.Parent.FullName + "\\Resources\\" + "stop.png");
-
-            }
-            else
-            {
-                if (isStartPrewview)
-                {
-                    StopPrewview();
-                }
-            }
 
         }
 
