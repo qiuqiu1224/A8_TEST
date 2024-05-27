@@ -851,7 +851,8 @@ namespace A8_TEST
             threadAlert.Name = "threadAlert";
             threadAlert.Start();
 
-  
+            //设备校时
+            Timing();
         }
 
         private void GetTmp()
