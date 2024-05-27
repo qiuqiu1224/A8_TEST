@@ -16,6 +16,7 @@ using System.Net.Sockets;
 using System.Net;
 using System.Runtime.InteropServices;
 using OpenCvSharp.Extensions;
+using System.Media;
 
 namespace A8_TEST
 {
@@ -31,8 +32,8 @@ namespace A8_TEST
         private PictureBox[] pics;//显示图像控件
         private UIPage fmonitor;//监控界面
         private UIPage fbrowse;//浏览界面
-                               // private UIPanel pixUIPanel;//容纳PictureBox的Panel
-                               //public static TransparentLabel[] labels;//图像上面标注控件,背景透明
+        // private UIPanel pixUIPanel;//容纳PictureBox的Panel
+        //public static TransparentLabel[] labels;//图像上面标注控件,背景透明
 
         UISymbolButton startPrewviewBtn, stopPrewviewBtn, startRecordBtn, stopRecordBtn, mouseFollowBtn, takePicBtn;
         private bool isStartPrewview = false;//开始采集标志
@@ -57,7 +58,7 @@ namespace A8_TEST
         List<float> tempMouseY = new List<float>();//鼠标跟随对应温度数组y坐标
 
         string recordName;//录制视频文件名
-        VideoWriter writer;//存储视频对象
+        VideoWriter writer;//存储红外视频对象
         private bool isInPic;//判断鼠标是否在图像内的标志
 
         #region 红外
@@ -65,7 +66,7 @@ namespace A8_TEST
         Thread thPlayer;//解码红外视频线程      
 
 
-        List<string> ipLists = new List<string>(); //设备ip集合
+        //List<string> ipLists = new List<string>(); //设备ip集合
         List<A8SDK> a8Lists = new List<A8SDK>(); //红外设备A8SDK对象集合
         List<A8SDK.globa_temp> globa_Temps = new List<A8SDK.globa_temp>();
         A8SDK.globa_temp globa_Temp;//全局温度结构对象
@@ -109,6 +110,7 @@ namespace A8_TEST
         {
             InitializeComponent();
 
+            A8SDK.SDK_initialize();
 
             //a8 = new A8SDK("192.168.100.2");
 
@@ -206,6 +208,33 @@ namespace A8_TEST
 
         }
 
+        private void ThreadAlert()
+        {
+            while (true)
+            {
+                Thread.Sleep(100);
+
+                if (alertFlag)
+                {
+                    try
+                    {
+                        SoundPlayer player = new SoundPlayer();
+                        player.SoundLocation = Application.StartupPath + "\\Alert.wav";
+                        player.Load();
+                        player.Play();
+                        Thread.Sleep(5000);
+
+                        alertFlag = false;
+                    }
+                    catch (Exception e)
+                    {
+                        Globals.Log("ThreadAlert" + e.Message);
+                    }
+                }
+            }
+        }
+
+
         private void takePicBtn_MouseLeave(object sender, EventArgs e)
         {
             SetButtonImg(takePicBtn, "抓图.png");
@@ -231,25 +260,25 @@ namespace A8_TEST
 
                 //Thread.Sleep(100);
                 //采集预览光学图像
-                PreviewOpDevice(0, RealDataCallBack);
+                //PreviewOpDevice(0, RealDataCallBack);
             }
             else if (WindowState == FormWindowState.Minimized)
             {
 
-                for (int i = 0; i < Globals.systemParam.deviceCount; i++)
-                {
-                    //isShowIRImageFlags[i] = false;//设置显示红外图像标志
-                    //socketReceiveFlags[i] = false;                
+                //for (int i = 0; i < Globals.systemParam.deviceCount; i++)
+                //{
+                //    //isShowIRImageFlags[i] = false;//设置显示红外图像标志
+                //    //socketReceiveFlags[i] = false;                
 
-                    //如果正在预览光学图像，停止预览，并设置mRealHandles为-1
-                    if (mRealHandles[i] >= 0)
-                    {
-                        CHCNetSDK.NET_DVR_StopRealPlay(mRealHandles[i]);
-                        mRealHandles[i] = -1;
-                    }
+                //    //如果正在预览光学图像，停止预览，并设置mRealHandles为-1
+                //    if (mRealHandles[i] >= 0)
+                //    {
+                //        CHCNetSDK.NET_DVR_StopRealPlay(mRealHandles[i]);
+                //        mRealHandles[i] = -1;
+                //    }
 
-                    //CHCNetSDK.NET_DVR_Cleanup();
-                }
+                //    //CHCNetSDK.NET_DVR_Cleanup();
+                //}
                 //StopPrewview();
             }
         }
@@ -654,7 +683,7 @@ namespace A8_TEST
                 // recordName = filePath + ".avi";
 
                 //利用VideoWriter对象 录制视频  红外视频帧频25HZ，分辨率768*576      
-                writer = new VideoWriter(recordName, FourCC.MJPG, 15, new OpenCvSharp.Size(768, 576), true);
+                writer = new VideoWriter(recordName, FourCC.MJPG, 10, new OpenCvSharp.Size(768, 576), true);
                 saveVideoFlag = true;
             }
 
@@ -781,9 +810,19 @@ namespace A8_TEST
         {
             isStartPrewview = true;
 
-            thPlayer = new Thread(DeCoding);
-            thPlayer.IsBackground = true;
-            thPlayer.Start();
+            if (thPlayer != null)
+            {
+                rtmp.Stop();
+
+                thPlayer = null;
+            }
+            else
+            {
+                thPlayer = new Thread(DeCoding);
+                thPlayer.IsBackground = true;
+                thPlayer.Start();
+            }
+
 
             Thread.Sleep(100);
 
@@ -806,8 +845,13 @@ namespace A8_TEST
             Thread GetTmpThread = new Thread(GetTmp);
             GetTmpThread.IsBackground = true;
             GetTmpThread.Start();
-            //设备校时
-            Timing();
+
+
+            Thread threadAlert = new Thread(new ThreadStart(ThreadAlert));
+            threadAlert.Name = "threadAlert";
+            threadAlert.Start();
+
+  
         }
 
         private void GetTmp()
@@ -915,30 +959,30 @@ namespace A8_TEST
 
             a8Lists[0].Set_time(time_Param);
 
-            m_struTimeCfg.dwYear = DateTime.Now.Year; ;
-            m_struTimeCfg.dwMonth = DateTime.Now.Month;
-            m_struTimeCfg.dwDay = DateTime.Now.Day;
-            m_struTimeCfg.dwHour = DateTime.Now.Hour;
-            m_struTimeCfg.dwMinute = DateTime.Now.Minute;
-            m_struTimeCfg.dwSecond = DateTime.Now.Second;
+            //m_struTimeCfg.dwYear = DateTime.Now.Year; ;
+            //m_struTimeCfg.dwMonth = DateTime.Now.Month;
+            //m_struTimeCfg.dwDay = DateTime.Now.Day;
+            //m_struTimeCfg.dwHour = DateTime.Now.Hour;
+            //m_struTimeCfg.dwMinute = DateTime.Now.Minute;
+            //m_struTimeCfg.dwSecond = DateTime.Now.Second;
 
-            Int32 nSize = Marshal.SizeOf(m_struTimeCfg);
-            IntPtr ptrTimeCfg = Marshal.AllocHGlobal(nSize);
-            Marshal.StructureToPtr(m_struTimeCfg, ptrTimeCfg, false);
+            //Int32 nSize = Marshal.SizeOf(m_struTimeCfg);
+            //IntPtr ptrTimeCfg = Marshal.AllocHGlobal(nSize);
+            //Marshal.StructureToPtr(m_struTimeCfg, ptrTimeCfg, false);
 
-            if (!CHCNetSDK.NET_DVR_SetDVRConfig(mUserIDs[0], CHCNetSDK.NET_DVR_SET_TIMECFG, -1, ptrTimeCfg, (UInt32)nSize))
-            {
-                iLastErr = CHCNetSDK.NET_DVR_GetLastError();
-                str = "NET_DVR_SET_TIMECFG failed, error code= " + iLastErr;
-                //设置时间失败，输出错误号 Failed to set the time of device and output the error code
-                MessageBox.Show(str);
-            }
-            else
-            {
-                //MessageBox.Show("校时成功！");
-            }
+            //if (!CHCNetSDK.NET_DVR_SetDVRConfig(mUserIDs[0], CHCNetSDK.NET_DVR_SET_TIMECFG, -1, ptrTimeCfg, (UInt32)nSize))
+            //{
+            //    iLastErr = CHCNetSDK.NET_DVR_GetLastError();
+            //    str = "NET_DVR_SET_TIMECFG failed, error code= " + iLastErr;
+            //    //设置时间失败，输出错误号 Failed to set the time of device and output the error code
+            //    MessageBox.Show(str);
+            //}
+            //else
+            //{
+            //    //MessageBox.Show("校时成功！");
+            //}
 
-            Marshal.FreeHGlobal(ptrTimeCfg);
+            //Marshal.FreeHGlobal(ptrTimeCfg);
         }
 
 
@@ -948,205 +992,226 @@ namespace A8_TEST
             int i = 0;
             int j = 0;
             int num = (int)deviceNum;
-            while (isShowIRImageFlags[num])
+            Bitmap bitmap;
+            Bitmap oldBmp = null;
+            while (true)
             {
-                try
+                if (isShowIRImageFlags[num])
                 {
-                    //Console.WriteLine(DateTime.Now);
-                    //Console.WriteLine("irImageLists[num].Count" + irImageLists[num].Count);
-                    //红外图像集合长度不为0
-
-                    if (irImageLists[num].Count > 0)
+                    try
                     {
-                        //Console.WriteLine("  Console.WriteLine(irImageLists[num].Count);" + irImageLists[num].Count);
-                        //this.Invoke(new MethodInvoker(() =>
-                        //{
-                        Bitmap bitmap = (Bitmap)irImageLists[num][0].Clone();
+                        //Console.WriteLine(DateTime.Now);
+                        //Console.WriteLine("irImageLists[num].Count" + irImageLists[num].Count);
+                        //红外图像集合长度不为0
 
-                        //Console.WriteLine("bitmap.Width" + bitmap.Width);
-
-                        if (bitmap != null)
+                        if (irImageLists[num].Count > 0)
                         {
+                            //Console.WriteLine("  Console.WriteLine(irImageLists[num].Count);" + irImageLists[num].Count);
+                            //this.Invoke(new MethodInvoker(() =>
+                            //{
 
-                            using (Graphics gfx = Graphics.FromImage(bitmap))
+                            bitmap = (Bitmap)irImageLists[num][0].Clone();
+
+                            //Console.WriteLine("bitmap.Width" + bitmap.Width);
+
+                            if (bitmap != null)
                             {
 
-                                Font font = new Font("Arial", 14);
-                                //SolidBrush solidBrush = new SolidBrush(Color.FromArgb(205,51,51)) ;
-                                Brush brush = Brushes.LightGreen;
-                                Pen pen = new Pen(Color.Red, 2);
-
-                                string maxTemp;
-                                PointF point;
-
-                                maxTemp = ((float)globa_Temp.max_temp / 10).ToString("F1");//全局最高温度，保留一位小数
-                                float max = float.Parse(maxTemp);
-
-                                //图像最高温度大于设定的高温报警阈值，保存图像
-                                if (max >= Globals.systemParam.alarm_1)
+                                using (Graphics gfx = Graphics.FromImage(bitmap))
                                 {
-                                    if (i == 0)
+
+                                    Font font = new Font("Arial", 14);
+                                    //SolidBrush solidBrush = new SolidBrush(Color.FromArgb(205,51,51)) ;
+                                    Brush brush = Brushes.LightGreen;
+                                    Pen pen = new Pen(Color.Red, 2);
+
+                                    string maxTemp;
+                                    PointF point;
+
+                                    maxTemp = ((float)globa_Temp.max_temp / 10).ToString("F1");//全局最高温度，保留一位小数
+                                    float max = float.Parse(maxTemp);
+
+
+                                    //图像最高温度大于设定的高温报警阈值，保存图像
+                                    if (max >= Globals.systemParam.alarm_1)
                                     {
-                                        saveAlarmImageFlag = true;
-                                        alertFlag = true;
-                                        i = 1;
+                                        if (i == 0)
+                                        {
+                                            saveAlarmImageFlag = true;
+                                            alertFlag = true;
+                                            i = 1;
+                                        }
+
+                                    }
+                                    else//温度低于报警阈值时，关闭保存图像定时器
+                                    {
+                                        if (j == 1)
+                                        {
+                                            i = 0;
+                                            j = 0;
+
+                                            this.Invoke((MethodInvoker)delegate
+                                            {
+                                                timer3.Enabled = false;
+                                                timer3.Stop();
+                                            });
+
+                                            saveAlarmImageFlag = false;
+                                        }
                                     }
 
-                                }
-                                else//温度低于报警阈值时，关闭保存图像定时器
-                                {
+                                    //Console.WriteLine("maxTempX = " + globa_Temps[num].max_temp_x + "maxTempY" + globa_Temps[num].max_temp_y);
+                                    float maxTempX = globa_Temp.max_temp_x * pt;
+                                    float maxTempY = globa_Temp.max_temp_y * pt;
+
+                                    //获取最大值字符串在屏幕上显示的尺寸
+                                    SizeF maxTempStringSize = gfx.MeasureString(maxTemp, font);
+
+                                    //超出边界，调整显示位置
+                                    if (maxTempX + maxTempStringSize.Width > bitmap.Width)
+                                    {
+                                        maxTempX = maxTempX - maxTempStringSize.Width;
+                                    }
+
+                                    if (maxTempY + maxTempStringSize.Height > bitmap.Height)
+                                    {
+                                        maxTempY = maxTempY - maxTempStringSize.Height;
+                                    }
+
+                                    point = new PointF(maxTempX, maxTempY);
+
+                                    //图像上显示全局温度最大值
+                                    gfx.DrawString(maxTemp, font, brush, point);
+
+                                    //图像上绘制十字标记
+                                    DrawCrossLine(gfx, globa_Temp.max_temp_x * pt, globa_Temp.max_temp_y * pt, pen, 10);
+
+                                    if (saveImageFlag)
+                                    {
+                                        string IrImagePath = GetIrImageFilePath(Globals.ImageDirectoryPath, 0, "_IR.bmp");
+
+                                        bitmap.Save(IrImagePath, System.Drawing.Imaging.ImageFormat.Bmp);
+
+                                        SaveOpImage(0, Globals.ImageDirectoryPath, mRealHandles[0], 1);
+                                        saveImageFlag = false;
+                                    }
+
+
+                                    //保存报警图像
                                     if (saveAlarmImageFlag)
                                     {
-                                        this.Invoke((MethodInvoker)delegate
+                                        string IrImagePath = GetIrImageFilePath(Globals.AlarmImageDirectoryPath, 0, "_IR.bmp");
+                                        bitmap.Save(IrImagePath, System.Drawing.Imaging.ImageFormat.Bmp);
+
+                                        if (j == 0)
                                         {
-                                            timer3.Enabled = false;
-                                            timer3.Stop();
-                                        });
-
-                                        saveAlarmImageFlag = false;
-                                    }
-                                    i = 0;
-                                    j = 0;
-                                }
-
-                                //Console.WriteLine("maxTempX = " + globa_Temps[num].max_temp_x + "maxTempY" + globa_Temps[num].max_temp_y);
-                                float maxTempX = globa_Temp.max_temp_x * pt;
-                                float maxTempY = globa_Temp.max_temp_y * pt;
-
-                                //获取最大值字符串在屏幕上显示的尺寸
-                                SizeF maxTempStringSize = gfx.MeasureString(maxTemp, font);
-
-                                //超出边界，调整显示位置
-                                if (maxTempX + maxTempStringSize.Width > bitmap.Width)
-                                {
-                                    maxTempX = maxTempX - maxTempStringSize.Width;
-                                }
-
-                                if (maxTempY + maxTempStringSize.Height > bitmap.Height)
-                                {
-                                    maxTempY = maxTempY - maxTempStringSize.Height;
-                                }
-
-                                point = new PointF(maxTempX, maxTempY);
-
-                                //图像上显示全局温度最大值
-                                gfx.DrawString(maxTemp, font, brush, point);
-
-                                //图像上绘制十字标记
-                                DrawCrossLine(gfx, globa_Temp.max_temp_x * pt, globa_Temp.max_temp_y * pt, pen, 10);
-
-                                if (saveImageFlag)
-                                {
-                                    string IrImagePath = GetIrImageFilePath(Globals.ImageDirectoryPath, 0, "_IR.bmp");
-
-                                    bitmap.Save(IrImagePath, System.Drawing.Imaging.ImageFormat.Bmp);
-
-                                    SaveOpImage(0, Globals.ImageDirectoryPath, mRealHandles[0], 1);
-                                    saveImageFlag = false;
-                                }
-
-
-                                //保存报警图像
-                                if (saveAlarmImageFlag)
-                                {
-                                    string IrImagePath = GetIrImageFilePath(Globals.AlarmImageDirectoryPath, 0, "_IR.bmp");
-                                    bitmap.Save(IrImagePath, System.Drawing.Imaging.ImageFormat.Bmp);
-
-                                    if (j == 0)
-                                    {
-                                        SaveOpImage(0, Globals.AlarmImageDirectoryPath, mRealHandles[0], 1);
-                                        this.Invoke((MethodInvoker)delegate
-                                        {
+                                            SaveOpImage(0, Globals.AlarmImageDirectoryPath, mRealHandles[0], 1);
+                                            this.Invoke((MethodInvoker)delegate
+                                            {
                                             //开启定时器，定时保存图像
                                             timer3.Enabled = true;
-                                            timer3.Start();
-                                        });
+                                                timer3.Start();
+                                            });
 
-                                        j = 1;
-                                    }
-
-                                    saveAlarmImageFlag = false;
-
-                                }
-
-                                Bitmap b = (Bitmap)bitmap.Clone();
-                                pics[num].Image = bitmap;
-
-
-                                //鼠标跟随
-                                if (mouseFollowFlag)
-                                {
-                                    //鼠标在图像内
-                                    if (isInPic)
-                                    {
-                                        Console.WriteLine("isInPic");
-                                        float tempX = picMouseX[num];
-                                        float tempY = picMouseY[num];
-                                        string temp = (realTemps[0][(int)tempMouseX[num], (int)tempMouseY[num]] * 1.0f / 10).ToString("F1");
-                                        SizeF tempStringSize = gfx.MeasureString(temp, font);
-
-                                        float locX = tempX * 1.0f / pics[num].Width * b.Width;
-                                        float locY = tempY * 1.0f / pics[num].Height * b.Height;
-
-                                        ////超出边界，调整显示位置
-                                        if (locX + tempStringSize.Width > b.Width)
-                                        {
-                                            locX = locX - tempStringSize.Width - 10;
+                                            j = 1;
                                         }
 
-                                        if (locY + tempStringSize.Height > b.Height)
+                                        saveAlarmImageFlag = false;
+
+                                    }
+
+                                    Bitmap b = (Bitmap)bitmap.Clone();
+                                    pics[num].Image = bitmap;
+
+
+                                    //鼠标跟随
+                                    if (mouseFollowFlag)
+                                    {
+                                        //鼠标在图像内
+                                        if (isInPic)
                                         {
-                                            locY = locY - tempStringSize.Height - 10;
+                                            Console.WriteLine("isInPic");
+                                            float tempX = picMouseX[num];
+                                            float tempY = picMouseY[num];
+                                            string temp = (realTemps[0][(int)tempMouseX[num], (int)tempMouseY[num]] * 1.0f / 10).ToString("F1");
+                                            SizeF tempStringSize = gfx.MeasureString(temp, font);
+
+                                            float locX = tempX * 1.0f / pics[num].Width * b.Width;
+                                            float locY = tempY * 1.0f / pics[num].Height * b.Height;
+
+                                            ////超出边界，调整显示位置
+                                            if (locX + tempStringSize.Width > b.Width)
+                                            {
+                                                locX = locX - tempStringSize.Width - 10;
+                                            }
+
+                                            if (locY + tempStringSize.Height > b.Height)
+                                            {
+                                                locY = locY - tempStringSize.Height - 10;
+                                            }
+
+                                            gfx.DrawString(temp, font, brush, locX + 10, locY + 10);
                                         }
-
-                                        gfx.DrawString(temp, font, brush, locX + 10, locY + 10);
                                     }
-                                }
 
-                                //保存红外视频
-                                if (saveVideoFlag)
-                                {
-                                    try
+                                    //保存红外视频
+                                    if (saveVideoFlag)
                                     {
-                                        Console.WriteLine(writer.IsOpened());
-                                        var mat = BitmapConverter.ToMat(b);
-                                        ///Mat mat = Bitmap2Mat(bitmap);
-                                        writer.Write(mat);
+                                        try
+                                        {
+                                            //Console.WriteLine(writer.IsOpened());
+                                            var mat = BitmapConverter.ToMat(b);
+                                            ///Mat mat = Bitmap2Mat(bitmap);
+                                            writer.Write(mat);
+
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            MessageBox.Show("录制视频失败" + ex.ToString());
+                                        }
                                     }
-                                    catch (Exception ex)
+
+                                    if (oldBmp != null)
                                     {
-                                        MessageBox.Show("录制视频失败" + ex.ToString());
+                                        oldBmp.Dispose();
                                     }
+                                    oldBmp = bitmap;
+                                    b = null;
+                                    bitmap = null;
+
                                 }
-
-                                b = null;
-                                bitmap = null;
-
                             }
-                        }
-                        //}));
-                        //红外图像集合数量大于5，删除多余图像，防止阻塞
-                        //Console.WriteLine("irImageLists[num].Count" + irImageLists[num].Count);
-                        if (irImageLists[num].Count > 1)
-                        {
-                            irImageLists[num].RemoveRange(0, irImageLists[num].Count - 1);
+                            //}));
+                            //红外图像集合数量大于5，删除多余图像，防止阻塞
+                            //Console.WriteLine("irImageLists[num].Count" + irImageLists[num].Count);
+                            if (irImageLists[num].Count > 1)
+                            {
+                                irImageLists[num].RemoveRange(0, irImageLists[num].Count - 1);
+                            }
+
+                            //irImageLists[num].RemoveAt(0);
                         }
 
-                        //irImageLists[num].RemoveAt(0);
+                        //else
+                        //{
+                        //    Globals.Log("irImageLists[num].Count == 0");
+                        //}
+
                     }
-
-                    else
+                    catch (Exception ex)
                     {
-                        Globals.Log("irImageLists[num].Count == 0");
+                        Globals.Log("显示红外图像失败" + ex.ToString());
+                        Globals.Log("irImageLists[num].Count" + irImageLists[num].Count);
+
+                        //Console.WriteLine(ex.ToString());
                     }
+                    Thread.Sleep(35);
 
                 }
-                catch (Exception ex)
+                else
                 {
-                    Globals.Log("显示红外图像失败" + ex.ToString());
-                    //Console.WriteLine(ex.ToString());
+                    break;
                 }
-                Thread.Sleep(35);
             }
 
             Globals.Log("红外图像显示线程结束");
@@ -1388,16 +1453,23 @@ namespace A8_TEST
 
         private void Timer1_Tick(object sender, EventArgs e)
         {
-            a8Lists[0].Get_globa_temp(out globa_Temp);//获取全局温度信息
-                                                      //Console.WriteLine(DateTime.Now);
-                                                      //Console.WriteLine(globa_Temp.max_temp);
+            if (a8Lists[0] != null)
+            {
+                a8Lists[0].Get_globa_temp(out globa_Temp);//获取全局温度信息
+                                                          //Console.WriteLine(DateTime.Now);
+                                                          //Console.WriteLine(globa_Temp.max_temp)
+            }
 
         }
 
         private void Timer3_Tick(object sender, EventArgs e)
         {
-            saveAlarmImageFlag = true;
+            //Console.WriteLine("定时器3" + DateTime.Now);
+            //Console.WriteLine(" mRealHandles[0]" + mRealHandles[0]);
+            //读取配置文件          
             SaveOpImage(0, Globals.AlarmImageDirectoryPath, mRealHandles[0], 1);
+            saveAlarmImageFlag = true;
+
         }
 
         private void SaveOpImage(int deviceNum, string rootPath, int /*userID*/handle, int channel)
@@ -1451,8 +1523,10 @@ namespace A8_TEST
                 {
                     //Console.WriteLine(DateTime.Now);
                     // pics[0].Image = bmp;
-                    
-                    irImageLists[0].Add((Bitmap)bmp.Clone());
+                    if (bmp != null)
+                    {
+                        irImageLists[0].Add((Bitmap)bmp.Clone());
+                    }
 
                     //if (oldBmp != null)
                     //{
@@ -1467,7 +1541,15 @@ namespace A8_TEST
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+
+                Globals.Log("DeCoding" + ex.ToString());
+                //Console.WriteLine(ex);
+                // 更新图片显示
+
+                rtmp.Stop();
+                thPlayer = new Thread(DeCoding);
+                thPlayer.IsBackground = true;
+                thPlayer.Start();
             }
             finally
             {
@@ -1603,6 +1685,7 @@ namespace A8_TEST
             ipList.Add(Globals.systemParam.ir_ip_1);
             ipList.Add(Globals.systemParam.ir_ip_2);
 
+            
 
             for (int i = 0; i < deviceCount; i++)
             {
@@ -1611,6 +1694,8 @@ namespace A8_TEST
 
                 irImageLists[i] = new List<Bitmap>();
                 //初始化红外设备对象，并添加到集合
+
+                
                 A8SDK a8 = new A8SDK(ipList[i]);
                 a8Lists.Add(a8);
 
@@ -1649,6 +1734,9 @@ namespace A8_TEST
                 tempMouseY.Add(0.0f);
 
             }
+
+            //设备校时
+            Timing();
 
             DirectoryInfo dirInfo = new DirectoryInfo(Globals.AlarmImageDirectoryPath + 0);
             Globals.fileInfos = dirInfo.GetFiles("*.bmp");

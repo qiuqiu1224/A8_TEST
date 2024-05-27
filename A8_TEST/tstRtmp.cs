@@ -214,8 +214,13 @@ namespace A8_TEST
                     // YUV->RGB
                     ffmpeg.sws_scale(pConvertContext, pDecodedFrame->data, pDecodedFrame->linesize, 0, height, dstData, dstLinesize);
                 }
+                catch (Exception ex)
+                {
+                    Globals.Log("tstRtmp start" + ex.ToString());
+                }
                 finally
                 {
+                   
                     ffmpeg.av_packet_unref(pPacket);//释放数据包对象引用
                     ffmpeg.av_frame_unref(pDecodedFrame);//释放解码帧对象引用
                 }

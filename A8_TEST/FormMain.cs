@@ -102,9 +102,6 @@ namespace A8_TEST
         List<Object> objects = new List<object>();
 
 
-
-
-
         [Obsolete]
         public FormMain()
         {
