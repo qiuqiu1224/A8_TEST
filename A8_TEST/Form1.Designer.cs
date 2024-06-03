@@ -98,6 +98,7 @@
             this.uiNavBar1.MenuStyle = Sunny.UI.UIMenuStyle.Custom;
             this.uiNavBar1.Name = "uiNavBar1";
             this.uiNavBar1.NodeAlignment = System.Drawing.StringAlignment.Near;
+            this.uiNavBar1.Radius = 2;
             this.uiNavBar1.SelectedForeColor = System.Drawing.Color.White;
             this.uiNavBar1.SelectedHighColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
             this.uiNavBar1.SelectedHighColorSize = 2;
@@ -132,6 +133,7 @@
             this.tabPage1.Size = new System.Drawing.Size(1235, 811);
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "tabPage1";
+            this.tabPage1.MouseDown += new System.Windows.Forms.MouseEventHandler(this.TabPage1_MouseDown);
             // 
             // tabPage2
             // 
@@ -167,17 +169,16 @@
             // 
             this.AllowShowTitle = false;
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
+            this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.ClientSize = new System.Drawing.Size(1235, 860);
             this.Controls.Add(this.uiTabControl1);
             this.Controls.Add(this.uiNavBar1);
-            this.MaximumSize = new System.Drawing.Size(1920, 1080);
             this.Name = "Form1";
             this.Padding = new System.Windows.Forms.Padding(0);
-            this.ShowFullScreen = true;
             this.ShowTitle = false;
+            this.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
             this.Style = Sunny.UI.UIStyle.Custom;
             this.Text = "Form1";
-            this.TopMost = true;
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.ZoomScaleRect = new System.Drawing.Rectangle(15, 15, 800, 450);
             this.Load += new System.EventHandler(this.Form1_Load);

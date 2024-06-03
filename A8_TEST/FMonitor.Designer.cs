@@ -30,6 +30,9 @@
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FMonitor));
             this.uiPanel1 = new Sunny.UI.UIPanel();
+            this.drawCircleBtn = new Sunny.UI.UISymbolButton();
+            this.drawRectBtn = new Sunny.UI.UISymbolButton();
+            this.takePicBtn = new Sunny.UI.UISymbolButton();
             this.uiSymbolButton2 = new Sunny.UI.UISymbolButton();
             this.mouseFollowBtn = new Sunny.UI.UISymbolButton();
             this.stopRecordBtn = new Sunny.UI.UISymbolButton();
@@ -37,13 +40,14 @@
             this.stopPrewviewBtn = new Sunny.UI.UISymbolButton();
             this.startPrewviewBtn = new Sunny.UI.UISymbolButton();
             this.uiNavMenu1 = new Sunny.UI.UINavMenu();
-            this.takePicBtn = new Sunny.UI.UISymbolButton();
             this.uiPanel1.SuspendLayout();
             this.SuspendLayout();
             // 
             // uiPanel1
             // 
             this.uiPanel1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(243)))), ((int)(((byte)(249)))), ((int)(((byte)(255)))));
+            this.uiPanel1.Controls.Add(this.drawCircleBtn);
+            this.uiPanel1.Controls.Add(this.drawRectBtn);
             this.uiPanel1.Controls.Add(this.takePicBtn);
             this.uiPanel1.Controls.Add(this.uiSymbolButton2);
             this.uiPanel1.Controls.Add(this.mouseFollowBtn);
@@ -70,6 +74,79 @@
             this.uiPanel1.TabIndex = 3;
             this.uiPanel1.Text = "uiPanel1";
             this.uiPanel1.TextAlignment = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // drawCircleBtn
+            // 
+            this.drawCircleBtn.BackColor = System.Drawing.Color.Transparent;
+            this.drawCircleBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.drawCircleBtn.FillColor = System.Drawing.Color.Transparent;
+            this.drawCircleBtn.Font = new System.Drawing.Font("宋体", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.drawCircleBtn.ForeColor = System.Drawing.Color.Transparent;
+            this.drawCircleBtn.Image = ((System.Drawing.Image)(resources.GetObject("drawCircleBtn.Image")));
+            this.drawCircleBtn.LightColor = System.Drawing.Color.Transparent;
+            this.drawCircleBtn.Location = new System.Drawing.Point(322, 8);
+            this.drawCircleBtn.Margin = new System.Windows.Forms.Padding(10, 3, 3, 3);
+            this.drawCircleBtn.MinimumSize = new System.Drawing.Size(1, 1);
+            this.drawCircleBtn.Name = "drawCircleBtn";
+            this.drawCircleBtn.RectColor = System.Drawing.Color.Transparent;
+            this.drawCircleBtn.RectHoverColor = System.Drawing.Color.Transparent;
+            this.drawCircleBtn.RectPressColor = System.Drawing.Color.Transparent;
+            this.drawCircleBtn.RectSelectedColor = System.Drawing.Color.Transparent;
+            this.drawCircleBtn.Size = new System.Drawing.Size(30, 35);
+            this.drawCircleBtn.SymbolColor = System.Drawing.Color.Transparent;
+            this.drawCircleBtn.TabIndex = 8;
+            this.drawCircleBtn.TipsColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.drawCircleBtn.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.drawCircleBtn.TipsText = "停止采集";
+            // 
+            // drawRectBtn
+            // 
+            this.drawRectBtn.BackColor = System.Drawing.Color.Transparent;
+            this.drawRectBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.drawRectBtn.FillColor = System.Drawing.Color.Transparent;
+            this.drawRectBtn.Font = new System.Drawing.Font("宋体", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.drawRectBtn.ForeColor = System.Drawing.Color.Transparent;
+            this.drawRectBtn.Image = ((System.Drawing.Image)(resources.GetObject("drawRectBtn.Image")));
+            this.drawRectBtn.LightColor = System.Drawing.Color.Transparent;
+            this.drawRectBtn.Location = new System.Drawing.Point(279, 8);
+            this.drawRectBtn.Margin = new System.Windows.Forms.Padding(10, 3, 3, 3);
+            this.drawRectBtn.MinimumSize = new System.Drawing.Size(1, 1);
+            this.drawRectBtn.Name = "drawRectBtn";
+            this.drawRectBtn.RectColor = System.Drawing.Color.Transparent;
+            this.drawRectBtn.RectHoverColor = System.Drawing.Color.Transparent;
+            this.drawRectBtn.RectPressColor = System.Drawing.Color.Transparent;
+            this.drawRectBtn.RectSelectedColor = System.Drawing.Color.Transparent;
+            this.drawRectBtn.Size = new System.Drawing.Size(30, 35);
+            this.drawRectBtn.SymbolColor = System.Drawing.Color.Transparent;
+            this.drawRectBtn.TabIndex = 7;
+            this.drawRectBtn.TipsColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.drawRectBtn.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.drawRectBtn.TipsText = "停止采集";
+            this.drawRectBtn.Click += new System.EventHandler(this.DrawRectBtn_Click);
+            // 
+            // takePicBtn
+            // 
+            this.takePicBtn.BackColor = System.Drawing.Color.Transparent;
+            this.takePicBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.takePicBtn.FillColor = System.Drawing.Color.Transparent;
+            this.takePicBtn.Font = new System.Drawing.Font("宋体", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.takePicBtn.ForeColor = System.Drawing.Color.Transparent;
+            this.takePicBtn.Image = ((System.Drawing.Image)(resources.GetObject("takePicBtn.Image")));
+            this.takePicBtn.LightColor = System.Drawing.Color.Transparent;
+            this.takePicBtn.Location = new System.Drawing.Point(184, 8);
+            this.takePicBtn.Margin = new System.Windows.Forms.Padding(10, 3, 3, 3);
+            this.takePicBtn.MinimumSize = new System.Drawing.Size(1, 1);
+            this.takePicBtn.Name = "takePicBtn";
+            this.takePicBtn.RectColor = System.Drawing.Color.Transparent;
+            this.takePicBtn.RectHoverColor = System.Drawing.Color.Transparent;
+            this.takePicBtn.RectPressColor = System.Drawing.Color.Transparent;
+            this.takePicBtn.RectSelectedColor = System.Drawing.Color.Transparent;
+            this.takePicBtn.Size = new System.Drawing.Size(30, 35);
+            this.takePicBtn.SymbolColor = System.Drawing.Color.Transparent;
+            this.takePicBtn.TabIndex = 6;
+            this.takePicBtn.TipsColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.takePicBtn.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.takePicBtn.TipsText = "停止采集";
             // 
             // uiSymbolButton2
             // 
@@ -239,30 +316,6 @@
             this.uiNavMenu1.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
             this.uiNavMenu1.Visible = false;
             // 
-            // takePicBtn
-            // 
-            this.takePicBtn.BackColor = System.Drawing.Color.Transparent;
-            this.takePicBtn.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.takePicBtn.FillColor = System.Drawing.Color.Transparent;
-            this.takePicBtn.Font = new System.Drawing.Font("宋体", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.takePicBtn.ForeColor = System.Drawing.Color.Transparent;
-            this.takePicBtn.Image = ((System.Drawing.Image)(resources.GetObject("takePicBtn.Image")));
-            this.takePicBtn.LightColor = System.Drawing.Color.Transparent;
-            this.takePicBtn.Location = new System.Drawing.Point(184, 8);
-            this.takePicBtn.Margin = new System.Windows.Forms.Padding(10, 3, 3, 3);
-            this.takePicBtn.MinimumSize = new System.Drawing.Size(1, 1);
-            this.takePicBtn.Name = "takePicBtn";
-            this.takePicBtn.RectColor = System.Drawing.Color.Transparent;
-            this.takePicBtn.RectHoverColor = System.Drawing.Color.Transparent;
-            this.takePicBtn.RectPressColor = System.Drawing.Color.Transparent;
-            this.takePicBtn.RectSelectedColor = System.Drawing.Color.Transparent;
-            this.takePicBtn.Size = new System.Drawing.Size(30, 35);
-            this.takePicBtn.SymbolColor = System.Drawing.Color.Transparent;
-            this.takePicBtn.TabIndex = 6;
-            this.takePicBtn.TipsColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
-            this.takePicBtn.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.takePicBtn.TipsText = "停止采集";
-            // 
             // FMonitor
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
@@ -289,5 +342,7 @@
         private Sunny.UI.UISymbolButton mouseFollowBtn;
         private Sunny.UI.UISymbolButton uiSymbolButton2;
         private Sunny.UI.UISymbolButton takePicBtn;
+        private Sunny.UI.UISymbolButton drawRectBtn;
+        private Sunny.UI.UISymbolButton drawCircleBtn;
     }
 }

@@ -64,5 +64,10 @@ namespace A8_TEST
         {
 
         }
+
+        private void DrawRectBtn_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 }

@@ -35,7 +35,7 @@ namespace A8_TEST
         // private UIPanel pixUIPanel;//容纳PictureBox的Panel
         //public static TransparentLabel[] labels;//图像上面标注控件,背景透明
 
-        UISymbolButton startPrewviewBtn, stopPrewviewBtn, startRecordBtn, stopRecordBtn, mouseFollowBtn, takePicBtn;
+        UISymbolButton startPrewviewBtn, stopPrewviewBtn, startRecordBtn, stopRecordBtn, mouseFollowBtn, takePicBtn, drawRectBtn, drawCircleBtn;
         private bool isStartPrewview = false;//开始采集标志
         List<Socket> sockets = new List<Socket>();//连接红外相机socket
         private delegate string ConnectSocketDelegate(IPEndPoint ipep, Socket sock);
@@ -105,6 +105,61 @@ namespace A8_TEST
 
         string sVideoFileName;
 
+        int selectType = -1;
+
+        List<TempRuleInfo> tempRuleInfos = new List<TempRuleInfo>();
+        int rectModeIndex = 0;
+        IRC_NET_POINT mouseDownPoint = new IRC_NET_POINT();
+        private List<IRC_NET_POINT> points = new List<IRC_NET_POINT>();
+        public int iNowPaint_X_Start = 0;
+        public int iNowPaint_Y_Start = 0;
+        public int iNowPaint_X_End = 0;
+        public int iNowPaint_Y_End = 0;
+        public int iTempType = 2;
+        bool idraw = false;
+        //public float fSx;//在红外显示控件上画选框，转换成红外视频帧x轴方向的缩放比例
+        //public float fSy;//在红外显示控件上画选框，转换成红外视频帧y轴方向的缩放比例
+
+        const Int32 IR_VEDIO_WIDTH = 768;//红外图像视频帧宽度
+        const Int32 IR_VEDIO_HEIGHT = 576;//红外图像视频帧高度
+        const Int32 IR_TEMP_WIDTH = 388;//红外温度帧宽度
+        const Int32 IR_TEMP_HEIGHT = 284;//红外温度帧高度
+
+
+        public struct TempRuleInfo
+        {
+            public int type;
+            public int index;
+            public int startPointX;
+            public int startPointY;
+            public int endPointX;
+            public int endPointY;
+            public int maxTemp;
+            public int maxTempLocX;
+            public int maxTempLocY;
+        }
+
+        /// <summary>
+        /// 测温工具模式
+        /// </summary>
+        public enum DrawMode
+        {
+            NO_DRAW = -1,
+            DRAW_POINT,
+            DRAW_LINE,
+            DRAW_AREA,
+            DRAW_CIRCLE,
+            DRAW_POLYGON,
+            DRAW_MOUSE//鼠标跟随
+        }
+
+        public struct IRC_NET_POINT
+        {
+            public int x; ///< x坐标
+            public int y; ///< y坐标
+        }
+
+
         [Obsolete]
         public Form1()
         {
@@ -114,8 +169,8 @@ namespace A8_TEST
 
             //a8 = new A8SDK("192.168.100.2");
 
-            this.TopMost = true;
-            this.WindowState = FormWindowState.Maximized;
+            //this.TopMost = true;
+            //this.WindowState = FormWindowState.Maximized;
 
             Control.CheckForIllegalCrossThreadCalls = false;
             SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.AllPaintingInWmPaint, true);
@@ -196,6 +251,18 @@ namespace A8_TEST
             takePicBtn.MouseHover += new EventHandler(takePicBtn_MouseHover);
             takePicBtn.MouseLeave += new EventHandler(takePicBtn_MouseLeave);
 
+            //获取Fmoitor界面画矩形按钮，并添加相关事件
+            drawRectBtn = (UISymbolButton)fmonitor.GetControl("drawRectBtn");
+            drawRectBtn.Click += new EventHandler(drawRectBtn_Click);
+            //drawRectBtn.MouseHover += new EventHandler(drawRectBtn_MouseHover);
+            //drawRectBtn.MouseLeave += new EventHandler(drawRectBtn_MouseLeave);
+
+            //获取Fmoitor界面画圆形按钮，并添加相关事件
+            drawCircleBtn = (UISymbolButton)fmonitor.GetControl("drawCircleBtn");
+            drawCircleBtn.Click += new EventHandler(drawCircleBtn_Click);
+            //drawCircleBtn.MouseHover += new EventHandler(drawCircleBtn_MouseHover);
+            //drawCircleBtn.MouseLeave += new EventHandler(drawCircleBtn_MouseLeave);
+
             //为按钮添加提示信息
             uiToolTip1.SetToolTip(startPrewviewBtn, "开始采集");
             uiToolTip1.SetToolTip(stopPrewviewBtn, "停止采集");
@@ -206,6 +273,36 @@ namespace A8_TEST
 
             StartPrewview();
 
+        }
+
+        private void drawCircleBtn_MouseLeave(object sender, EventArgs e)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void drawCircleBtn_MouseHover(object sender, EventArgs e)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void drawCircleBtn_Click(object sender, EventArgs e)
+        {
+            selectType = (int)DrawMode.DRAW_CIRCLE;
+        }
+
+        private void drawRectBtn_MouseLeave(object sender, EventArgs e)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void drawRectBtn_MouseHover(object sender, EventArgs e)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void drawRectBtn_Click(object sender, EventArgs e)
+        {
+            selectType = (int)DrawMode.DRAW_AREA;
         }
 
         private void ThreadAlert()
@@ -292,7 +389,8 @@ namespace A8_TEST
         private void mouseFollowBtn_MouseLeave(object sender, EventArgs e)
         {
 
-            if (!mouseFollowFlag)
+            //if (!mouseFollowFlag)
+            if (selectType != 5)
             {
                 SetButtonImg(mouseFollowBtn, "鼠标跟随.png");
             }
@@ -364,14 +462,16 @@ namespace A8_TEST
                 return;
             }
 
-            if (!mouseFollowFlag)
+            if (selectType != 5)
             {
-                mouseFollowFlag = true;
+                selectType = 5;
+                //mouseFollowFlag = true;
                 SetButtonImg(mouseFollowBtn, "鼠标跟随1.png");
             }
             else
             {
-                mouseFollowFlag = false;
+                selectType = -1;
+                //mouseFollowFlag = false;
                 SetButtonImg(mouseFollowBtn, "鼠标跟随.png");
             }
         }
@@ -851,7 +951,7 @@ namespace A8_TEST
             threadAlert.Name = "threadAlert";
             threadAlert.Start();
 
-  
+
         }
 
         private void GetTmp()
@@ -859,6 +959,77 @@ namespace A8_TEST
             while (isShowIRImageFlags[0])
             {
                 a8Lists[0].Get_globa_temp(out globa_Temp);//获取全局温度信息
+
+                //int i;
+                //a8sdk.A8SDK.area_temp area_Temp;
+                ////area_Temp = a8.Get_area_temp(1);
+                //i = a8Lists[0].Get_area_temp(1, out area_Temp);
+                //Console.WriteLine("执行返回： " + i.ToString());
+                //Console.WriteLine(area_Temp.max_temp.ToString());
+
+                if (tempRuleInfos.Count > 0)
+                {
+
+                    for (int i = 0; i < tempRuleInfos.Count; i++)
+                    {
+                        if (tempRuleInfos[i].type == (int)DrawMode.DRAW_AREA)
+                        {
+                            int[] results = getTempAtRect(realTemps[0], tempRuleInfos[i].startPointX / 2, tempRuleInfos[i].startPointY / 2, tempRuleInfos[i].endPointX / 2, tempRuleInfos[i].endPointY / 2);
+
+                            TempRuleInfo temp = tempRuleInfos[i];
+                            temp.maxTemp = results[0];
+                            temp.maxTempLocX = results[1];
+                            temp.maxTempLocY = results[2];
+                            tempRuleInfos[i] = temp;
+                        }
+
+                        if (tempRuleInfos[i].type == (int)DrawMode.DRAW_CIRCLE)
+                        {
+
+
+                            int startX = tempRuleInfos[i].startPointX / 2;
+                            int startY = tempRuleInfos[i].startPointY / 2;
+                            int endX = tempRuleInfos[i].endPointX / 2;
+                            int endY = tempRuleInfos[i].endPointY / 2;
+                            int radiusX = (endX - startX) / 2;
+                            int radiusY = (endY - startY) / 2;
+                            int[] results = FindMaxValueInEllipse(realTemps[0], startX + radiusX, startY + radiusY, radiusX, radiusY);
+                            //int[] results = getTempAtRect(realTemps[0], tempRuleInfos[i].startPointX / 2, tempRuleInfos[i].startPointY / 2, tempRuleInfos[i].endPointX / 2, tempRuleInfos[i].endPointY / 2);
+
+                            TempRuleInfo temp = tempRuleInfos[i];
+                            temp.maxTemp = results[0];
+                            temp.maxTempLocX = results[1];
+                            temp.maxTempLocY = results[2];
+                            tempRuleInfos[i] = temp;
+
+                            Console.WriteLine("椭圆最大值" + results[0]);
+                        }
+                    }
+
+
+
+
+
+                    //Console.WriteLine("矩形最大值" + results[0]);
+
+                    //int startX = tempRuleInfos[0].startPointX / 2;
+                    //int startY = tempRuleInfos[0].startPointY / 2;
+                    //int endX = tempRuleInfos[0].endPointX / 2;
+                    //int endY = tempRuleInfos[0].endPointY / 2;
+                    //int radiusX = (endX - startX) / 2;
+                    //int radiusY = (endY - startY) / 2;
+                    //int max = FindMaxValueInEllipse(realTemps[0], startX + radiusX, startY + radiusY, radiusX, radiusY);
+
+                    //Console.WriteLine("椭圆最大值" + max);
+
+                }
+
+
+                //if (tempRuleInfos.Count > 0)
+                //{
+                //    getTempAtRect(realTemps[0], tempRuleInfos[0].startPointX, tempRuleInfos[0].startPointY, tempRuleInfos[0].endPointX, tempRuleInfos[0].endPointY);
+                //}
+
                 Thread.Sleep(100);
             }
 
@@ -1086,6 +1257,52 @@ namespace A8_TEST
                                     //图像上绘制十字标记
                                     DrawCrossLine(gfx, globa_Temp.max_temp_x * pt, globa_Temp.max_temp_y * pt, pen, 10);
 
+                                    //Console.WriteLine(" iNowPaint_X_Start" + iNowPaint_X_Start);
+                                    //Console.WriteLine(" iNowPaint_Y_Start" + iNowPaint_Y_Start);
+                                    //Console.WriteLine(" iNowPaint_X_End" + iNowPaint_X_End);
+                                    //Console.WriteLine(" iNowPaint_Y_End" + iNowPaint_Y_End);
+                                    //Console.WriteLine(" pics[0].Width" + pics[0].Width);
+                                    //Console.WriteLine(" pics[0].Height" + pics[0].Height);
+
+                                    if ((selectType == (int)DrawMode.DRAW_AREA) && iTempType == 3 && idraw == true)
+                                    {
+                                        //gfx.DrawPoint(Color.LightGreen, iNowPaint_X_Start, iNowPaint_Y_Start, 4);
+                                        gfx.DrawRectangle(Pens.LightGreen, iNowPaint_X_Start, iNowPaint_Y_Start, iNowPaint_X_End - iNowPaint_X_Start, iNowPaint_Y_End - iNowPaint_Y_Start);
+
+                                        //gfx.DrawEllipse(Pens.LightGreen, iNowPaint_X_Start, iNowPaint_Y_Start, iNowPaint_X_End - iNowPaint_X_Start, iNowPaint_Y_End - iNowPaint_Y_Start);
+                                    }
+
+                                    if ((selectType == (int)DrawMode.DRAW_CIRCLE) && iTempType == 3 && idraw == true)
+                                    {
+                                        //gfx.DrawPoint(Color.LightGreen, iNowPaint_X_Start, iNowPaint_Y_Start, 4);
+                                        //gfx.DrawPoint(Color.LightGreen, iNowPaint_X_Start, iNowPaint_Y_Start, 4);
+
+                                        gfx.DrawEllipse(Pens.LightGreen, iNowPaint_X_Start, iNowPaint_Y_Start, iNowPaint_X_End - iNowPaint_X_Start, iNowPaint_Y_End - iNowPaint_Y_Start);
+                                    }
+
+                                    //Console.WriteLine("tempRuleInfos.Count" + tempRuleInfos.Count);
+                                    for (int k = 0; k < tempRuleInfos.Count; k++)
+                                    {
+
+                                        if (tempRuleInfos[k].type == (int)DrawMode.DRAW_AREA)
+                                        {
+                                            gfx.DrawRectangle(new Pen(Color.LightGreen, 2), tempRuleInfos[k].startPointX, tempRuleInfos[k].startPointY, tempRuleInfos[k].endPointX - tempRuleInfos[k].startPointX, tempRuleInfos[k].endPointY - tempRuleInfos[k].startPointY);
+
+                                            
+
+                                        }
+                                        if (tempRuleInfos[k].type == (int)DrawMode.DRAW_CIRCLE)
+                                        {
+                                            gfx.DrawEllipse(new Pen(Color.LightGreen, 2), tempRuleInfos[k].startPointX, tempRuleInfos[k].startPointY, tempRuleInfos[k].endPointX - tempRuleInfos[k].startPointX, tempRuleInfos[k].endPointY - tempRuleInfos[k].startPointY);
+                                        }
+
+                                        DrawCrossLine(gfx, tempRuleInfos[k].maxTempLocX * pt, tempRuleInfos[k].maxTempLocY * pt, pen, 10);
+                                        maxTemp = ((float)tempRuleInfos[k].maxTemp / 10).ToString("F1");//全局最高温度，保留一位小数
+                                        point = new PointF(tempRuleInfos[k].maxTempLocX * 2, tempRuleInfos[k].maxTempLocY * 2);
+                                        gfx.DrawString(maxTemp, font, brush, point);
+
+                                    }
+
                                     if (saveImageFlag)
                                     {
                                         string IrImagePath = GetIrImageFilePath(Globals.ImageDirectoryPath, 0, "_IR.bmp");
@@ -1108,8 +1325,8 @@ namespace A8_TEST
                                             SaveOpImage(0, Globals.AlarmImageDirectoryPath, mRealHandles[0], 1);
                                             this.Invoke((MethodInvoker)delegate
                                             {
-                                            //开启定时器，定时保存图像
-                                            timer3.Enabled = true;
+                                                //开启定时器，定时保存图像
+                                                timer3.Enabled = true;
                                                 timer3.Start();
                                             });
 
@@ -1125,7 +1342,8 @@ namespace A8_TEST
 
 
                                     //鼠标跟随
-                                    if (mouseFollowFlag)
+                                    //if (mouseFollowFlag)
+                                    if (selectType == (int)DrawMode.DRAW_MOUSE)
                                     {
                                         //鼠标在图像内
                                         if (isInPic)
@@ -1202,6 +1420,17 @@ namespace A8_TEST
                     {
                         Globals.Log("显示红外图像失败" + ex.ToString());
                         Globals.Log("irImageLists[num].Count" + irImageLists[num].Count);
+
+                        irImageLists[num].Clear();
+                        if (thPlayer != null)
+                        {
+                            rtmp.Stop();
+                            thPlayer = null;
+                        }
+
+                        thPlayer = new Thread(DeCoding);
+                        thPlayer.IsBackground = true;
+                        thPlayer.Start();
 
                         //Console.WriteLine(ex.ToString());
                     }
@@ -1527,6 +1756,19 @@ namespace A8_TEST
                     {
                         irImageLists[0].Add((Bitmap)bmp.Clone());
                     }
+                    else
+                    {
+                        Globals.Log("Decoding:" + "bmp == null");
+                        //if (thPlayer != null)
+                        //{
+                        //    rtmp.Stop();
+                        //    thPlayer = null;
+                        //}
+
+                        //thPlayer = new Thread(DeCoding);
+                        //thPlayer.IsBackground = true;
+                        //thPlayer.Start();
+                    }
 
                     //if (oldBmp != null)
                     //{
@@ -1545,8 +1787,12 @@ namespace A8_TEST
                 Globals.Log("DeCoding" + ex.ToString());
                 //Console.WriteLine(ex);
                 // 更新图片显示
+                if (thPlayer != null)
+                {
+                    rtmp.Stop();
+                    thPlayer = null;
+                }
 
-                rtmp.Stop();
                 thPlayer = new Thread(DeCoding);
                 thPlayer.IsBackground = true;
                 thPlayer.Start();
@@ -1610,6 +1856,7 @@ namespace A8_TEST
         private void PictureBox3_Click(object sender, EventArgs e)
         {
             this.WindowState = FormWindowState.Minimized;
+
         }
 
         /// <summary>
@@ -1685,8 +1932,6 @@ namespace A8_TEST
             ipList.Add(Globals.systemParam.ir_ip_1);
             ipList.Add(Globals.systemParam.ir_ip_2);
 
-            
-
             for (int i = 0; i < deviceCount; i++)
             {
                 //初始化userId为-1
@@ -1695,7 +1940,7 @@ namespace A8_TEST
                 irImageLists[i] = new List<Bitmap>();
                 //初始化红外设备对象，并添加到集合
 
-                
+
                 A8SDK a8 = new A8SDK(ipList[i]);
                 a8Lists.Add(a8);
 
@@ -1745,40 +1990,109 @@ namespace A8_TEST
 
         }
 
+        private void TabPage1_MouseDown(object sender, MouseEventArgs e)
+        {
+
+        }
+
         private void Pics0_MouseLeave(object sender, EventArgs e)
         {
             //mouseFollowFlag = false;
             isInPic = false;
         }
 
-        private void Pics0_MouseHover(object sender, EventArgs e)
+        private void Pics0_MouseUp(object sender, MouseEventArgs e)
         {
             //this.uiToolTip1.SetToolTip(sender as PictureBox, "23.5");
+            //if (e.Button == MouseButtons.Left)
+            //{
+            //    switch (selectType)
+            //    {
+
+            //        case (int)DrawMode.DRAW_POINT:
+            //            //AddRule(selectType, points);
+            //            //points.Clear();
+            //            //isDrawing = false;
+            //            break;
+            //        case (int)DrawMode.DRAW_LINE:
+            //        case (int)DrawMode.DRAW_AREA:
+            //        case (int)DrawMode.DRAW_CIRCLE:
+            //            if (2 == points.Count)
+            //            {
+            //                TempRuleInfo tempRuleInfo = new TempRuleInfo();
+            //                tempRuleInfo.type = selectType;
+            //                tempRuleInfo.index = rectModeIndex;
+            //                tempRuleInfo.startPointX = points[0].x;
+            //                tempRuleInfo.startPointY = points[0].y;
+            //                tempRuleInfo.endPointX = points[1].x;
+            //                tempRuleInfo.endPointY = points[1].y;
+
+            //                tempRuleInfos.Add(tempRuleInfo);
+            //                //AddRule(selectType, points);
+            //                points.Clear();
+            //                //isDrawing = false;
+            //            }
+            //            break;
+            //    }
+            //}
         }
 
 
         private void Pics0_MouseMove(object sender, MouseEventArgs e)
         {
-
+            // iTempType = 3;
             if (!isStartPrewview)
             {
                 return;
             }
 
-            isInPic = true;
-            //Console.WriteLine("Pics0_MouseMove");
+            switch (selectType)
+            {
+                case (int)DrawMode.DRAW_MOUSE:
+                    isInPic = true;
+                    //Console.WriteLine("Pics0_MouseMove");
 
-            PictureBox pic = sender as PictureBox;
-            //Console.WriteLine("pic.Width" + pic.Width);
+                    PictureBox pic = sender as PictureBox;
+                    //Console.WriteLine("pic.Width" + pic.Width);
 
-            //// 获取鼠标在PictureBox内的位置
-            ///
+                    //// 获取鼠标在PictureBox内的位置
+                    ///
 
-            picMouseX[0] = e.X;
-            picMouseY[0] = e.Y;
+                    picMouseX[0] = e.X;
+                    picMouseY[0] = e.Y;
 
-            tempMouseX[0] = picMouseX[0] * 1.0f / (pics[0].Width) * 384;
-            tempMouseY[0] = picMouseY[0] * 1.0f / (pics[0].Height) * 288;
+                    tempMouseX[0] = picMouseX[0] * 1.0f / (pics[0].Width) * 384;
+                    tempMouseY[0] = picMouseY[0] * 1.0f / (pics[0].Height) * 288;
+                    break;
+
+                case (int)DrawMode.DRAW_LINE:
+                case (int)DrawMode.DRAW_AREA:
+                case (int)DrawMode.DRAW_CIRCLE:
+                    idraw = true;
+                    if (iTempType == 3)
+                    {
+                        iNowPaint_X_End = e.X * 768 / pics[0].Width;
+                        iNowPaint_Y_End = e.Y * 576 / pics[0].Height;
+
+                        mouseDownPoint.x = e.X * 768 / pics[0].Width;
+                        mouseDownPoint.y = e.Y * 576 / pics[0].Height;
+
+                        if (points.Count == 1)
+                        {
+
+                            points.Add(mouseDownPoint);
+                        }
+                        else if (points.Count == 2)
+                        {
+                            points[1] = mouseDownPoint;
+                        }
+                    }
+
+                    break;
+            }
+
+
+
 
             //// PointF pointF = new PointF(x,y);
 
@@ -1808,7 +2122,9 @@ namespace A8_TEST
         {
             //uint w = (uint)(Screen.PrimaryScreen.Bounds.Width - fmonitor.GetControl("uiPanel1").Width);
             //uint w = (uint)(Screen.PrimaryScreen.Bounds.Width - fmonitor.GetControl("uiNavMenu1").Width);
+            
             uint w = (uint)(Screen.PrimaryScreen.Bounds.Width);
+            
             uint h = (uint)(Screen.PrimaryScreen.Bounds.Height - uiNavBar1.Height - fmonitor.GetControl("uiPanel1").Height);
 
 
@@ -1879,11 +2195,12 @@ namespace A8_TEST
                         case 0:
                             //pics[i * 2 + j].Tag = 0;
                             //pics[i * 2 + j].Paint += new PaintEventHandler(Pics0_Paint);
-                            //pics[i * 2 + j].Click += new EventHandler(Pics0_Click);
-
+                            pics[i * 2 + j].MouseClick += new MouseEventHandler(Pics0_MouseClick);
+                            pics[i * 2 + j].MouseDown += new MouseEventHandler(Pics0_MouseDown);
                             pics[i * 2 + j].MouseMove += new MouseEventHandler(Pics0_MouseMove);
                             pics[i * 2 + j].MouseLeave += new EventHandler(Pics0_MouseLeave);
-                            pics[i * 2 + j].MouseHover += new EventHandler(Pics0_MouseHover);
+                            //pics[i * 2 + j].MouseHover += new EventHandler(Pics0_MouseUp);
+                            pics[i * 2 + j].MouseUp += new MouseEventHandler(Pics0_MouseUp);
                             break;
                         case 1:
                             //pics[i * 2 + j].Tag = 0;
@@ -1911,6 +2228,194 @@ namespace A8_TEST
             //{
             //    Console.WriteLine(p.Name);
             //}
+        }
+
+        private void Pics0_MouseClick(object sender, MouseEventArgs e)
+        {
+
+            int iX = e.X * 768 / pics[0].Width;
+            int iY = e.Y * 576 / pics[0].Height;
+
+            mouseDownPoint.x = iX;
+            mouseDownPoint.y = iY;
+
+            iNowPaint_X_End = 0;
+            iNowPaint_Y_End = 0;
+
+            if (e.Button == MouseButtons.Left)
+            {
+                if (iTempType == 2)//画矩形或画圆形
+                {
+                    idraw = false;
+                    iNowPaint_X_Start = iX;
+                    iNowPaint_Y_Start = iY;
+
+                    points.Add(mouseDownPoint);
+
+                    iTempType = 3;
+                }
+
+            }
+            else if (e.Button == MouseButtons.Right)
+            {
+                iTempType = 2;
+                idraw = false;
+                switch (selectType)
+                {
+                    case (int)DrawMode.DRAW_POINT:
+                    case (int)DrawMode.DRAW_LINE:
+                    case (int)DrawMode.DRAW_AREA:
+                    case (int)DrawMode.DRAW_CIRCLE:
+
+                        if (2 == points.Count)
+                        {
+
+                            TempRuleInfo tempRuleInfo = new TempRuleInfo();
+                            tempRuleInfo.type = selectType;
+                            tempRuleInfo.index = rectModeIndex;
+                            tempRuleInfo.startPointX = points[0].x;
+                            tempRuleInfo.startPointY = points[0].y;
+                            tempRuleInfo.endPointX = points[1].x;
+                            tempRuleInfo.endPointY = points[1].y;
+
+                            //tempRuleInfos[rectModeIndex] = tempRuleInfo;
+                            tempRuleInfos.Add(tempRuleInfo);
+
+                            //a8sdk.A8SDK.area_pos area_data;
+
+                            //area_data.enable = 1;
+                            //area_data.height = points[1].y- points[0].y;
+                            //area_data.width = points[1].x- points[0].x;
+                            //area_data.x = points[0].x;
+                            //area_data.y = points[0].y;
+                            //int i = a8Lists[0].Set_area_pos(0, area_data);
+                            //Console.WriteLine("执行结果" + i);
+
+                            points.Clear();
+
+                            //int i;
+                            //a8sdk.A8SDK.area_pos area_data;
+
+                            //Console.WriteLine(" tempRuleInfos[0].startPointX" + tempRuleInfos[0].startPointX);
+                            //Console.WriteLine("tempRuleInfos[0].startPointY " + tempRuleInfos[0].startPointY);
+                            //Console.WriteLine("tempRuleInfos[0].endPointX" + tempRuleInfos[0].endPointX);
+                            //Console.WriteLine("tempRuleInfos[0].endPointY" + tempRuleInfos[0].endPointY);
+
+
+                            //int x1 = tempRuleInfos[0].startPointX / 4;
+                            //int y1 = tempRuleInfos[0].startPointY / 4;
+
+                            //int x2 = tempRuleInfos[0].endPointX / 4;
+                            //int y2 = tempRuleInfos[0].endPointY / 4;
+
+                            //Console.WriteLine("x1" + x1);
+                            //Console.WriteLine("y1" + y1);
+                            //Console.WriteLine("x2" + x2);
+                            //Console.WriteLine("y2" + y2);
+
+                            //area_data.enable = 1;
+                            //area_data.height = y2-y1;
+                            //area_data.width = x2-x1;
+                            //area_data.x = x1;
+                            //area_data.y = y1;
+                            //i = a8Lists[0].Set_area_pos(1, area_data);
+
+
+                            //rectModeIndex++;
+
+                        }
+                        break;
+                }
+            }
+
+        }
+
+        public int[] getTempAtRect(int[,] realTemp, int X1, int Y1, int X2, int Y2)
+        {
+            int[] result = new int[3];
+            int startX = X1 < X2 ? X1 : X2;
+            int startY = Y1 < Y2 ? Y1 : Y2;
+            int endX = X1 < X2 ? X2 : X1;
+            int endY = Y1 < Y2 ? Y2 : Y1;
+            result[0] = realTemp[startX, startY];
+            result[1] = startX;
+            result[2] = startY;
+
+            for (int j = startY; j < endY; ++j)
+            {
+                for (int i = startX; i < endX; ++i)
+                {
+
+
+                    if (realTemp[i, j] > result[0])
+                    {
+                        result[0] = realTemp[i, j];
+                        result[1] = i;
+                        result[2] = j;
+                    }
+
+                }
+            }
+            return result;
+        }
+
+
+        public int[] FindMaxValueInEllipse(int[,] imageData, int ellipseCenterX, int ellipseCenterY, int ellipseRadiusX, int ellipseRadiusY)
+        {
+            int[] result = new int[3];
+            result[0] = int.MinValue;
+            //Console.WriteLine("ellipseCenterX:" + ellipseCenterX);
+            //Console.WriteLine("ellipseCenterY:" + ellipseCenterY);
+            //Console.WriteLine("ellipseRadiusX:" + ellipseRadiusX);
+            //Console.WriteLine("ellipseRadiusY:" + ellipseRadiusY);
+
+            for (int y = ellipseCenterY - ellipseRadiusY; y <= ellipseCenterY + ellipseRadiusY; y++)
+            {
+                for (int x = ellipseCenterX - ellipseRadiusX; x <= ellipseCenterX + ellipseRadiusX; x++)
+                {
+
+                    // 检查点是否在椭圆内
+                    if (IsPointInEllipse(x, y, ellipseCenterX, ellipseCenterY, ellipseRadiusX, ellipseRadiusY))
+                    {
+                        //Console.WriteLine(" imageData.GetLength(0)" + imageData.GetLength(0));
+                        //Console.WriteLine(" imageData.GetLength(1)" + imageData.GetLength(1));
+
+                        // 确保坐标在图像数组范围内
+                        if (x >= 0 && x < imageData.GetLength(0) && y >= 0 && y < imageData.GetLength(1))
+                        {
+                            int currentValue = imageData[x, y];
+                            if(currentValue >result[0])
+                            {
+                                result[0] = currentValue;
+                                result[1] = x;
+                                result[2] = y;
+                            }
+                           // result[0] = Math.Max(result[0], currentValue);
+                            
+                        }
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        // 判断点是否在椭圆内的方法
+        private bool IsPointInEllipse(int x, int y, int ellipseCenterX, int ellipseCenterY, int ellipseRadiusX, int ellipseRadiusY)
+        {
+            // 使用椭圆的标准方程进行检查
+            double xDiff = x - ellipseCenterX;
+            double yDiff = y - ellipseCenterY;
+            double xRadiusSquared = ellipseRadiusX * ellipseRadiusX;
+            double yRadiusSquared = ellipseRadiusY * ellipseRadiusY;
+            double ratio = xRadiusSquared / yRadiusSquared;
+
+            return (xDiff * xDiff) / xRadiusSquared + (yDiff * yDiff) / (ratio * yRadiusSquared) <= 1;
+        }
+
+        private void Pics0_MouseDown(object sender, MouseEventArgs e)
+        {
+
         }
     }
 }
