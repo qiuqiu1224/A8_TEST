@@ -1020,7 +1020,7 @@ namespace A8_TEST
             threadAlert.Name = "threadAlert";
             threadAlert.Start();
 
-
+  
         }
 
         private void GetTmp()
