@@ -169,12 +169,12 @@
             // 
             this.AllowShowTitle = false;
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
-            this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.ClientSize = new System.Drawing.Size(1235, 860);
             this.Controls.Add(this.uiTabControl1);
             this.Controls.Add(this.uiNavBar1);
             this.Name = "Form1";
             this.Padding = new System.Windows.Forms.Padding(0);
+            this.ShowRect = false;
             this.ShowTitle = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
             this.Style = Sunny.UI.UIStyle.Custom;

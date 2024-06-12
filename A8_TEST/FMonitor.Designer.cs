@@ -30,6 +30,7 @@
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FMonitor));
             this.uiPanel1 = new Sunny.UI.UIPanel();
+            this.deleteAllDrawBtn = new Sunny.UI.UISymbolButton();
             this.drawCircleBtn = new Sunny.UI.UISymbolButton();
             this.drawRectBtn = new Sunny.UI.UISymbolButton();
             this.takePicBtn = new Sunny.UI.UISymbolButton();
@@ -46,6 +47,7 @@
             // uiPanel1
             // 
             this.uiPanel1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(243)))), ((int)(((byte)(249)))), ((int)(((byte)(255)))));
+            this.uiPanel1.Controls.Add(this.deleteAllDrawBtn);
             this.uiPanel1.Controls.Add(this.drawCircleBtn);
             this.uiPanel1.Controls.Add(this.drawRectBtn);
             this.uiPanel1.Controls.Add(this.takePicBtn);
@@ -74,6 +76,30 @@
             this.uiPanel1.TabIndex = 3;
             this.uiPanel1.Text = "uiPanel1";
             this.uiPanel1.TextAlignment = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // deleteAllDrawBtn
+            // 
+            this.deleteAllDrawBtn.BackColor = System.Drawing.Color.Transparent;
+            this.deleteAllDrawBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.deleteAllDrawBtn.FillColor = System.Drawing.Color.Transparent;
+            this.deleteAllDrawBtn.Font = new System.Drawing.Font("宋体", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.deleteAllDrawBtn.ForeColor = System.Drawing.Color.Transparent;
+            this.deleteAllDrawBtn.Image = ((System.Drawing.Image)(resources.GetObject("deleteAllDrawBtn.Image")));
+            this.deleteAllDrawBtn.LightColor = System.Drawing.Color.Transparent;
+            this.deleteAllDrawBtn.Location = new System.Drawing.Point(365, 8);
+            this.deleteAllDrawBtn.Margin = new System.Windows.Forms.Padding(10, 3, 3, 3);
+            this.deleteAllDrawBtn.MinimumSize = new System.Drawing.Size(1, 1);
+            this.deleteAllDrawBtn.Name = "deleteAllDrawBtn";
+            this.deleteAllDrawBtn.RectColor = System.Drawing.Color.Transparent;
+            this.deleteAllDrawBtn.RectHoverColor = System.Drawing.Color.Transparent;
+            this.deleteAllDrawBtn.RectPressColor = System.Drawing.Color.Transparent;
+            this.deleteAllDrawBtn.RectSelectedColor = System.Drawing.Color.Transparent;
+            this.deleteAllDrawBtn.Size = new System.Drawing.Size(30, 35);
+            this.deleteAllDrawBtn.SymbolColor = System.Drawing.Color.Transparent;
+            this.deleteAllDrawBtn.TabIndex = 9;
+            this.deleteAllDrawBtn.TipsColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.deleteAllDrawBtn.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.deleteAllDrawBtn.TipsText = "停止采集";
             // 
             // drawCircleBtn
             // 
@@ -344,5 +370,6 @@
         private Sunny.UI.UISymbolButton takePicBtn;
         private Sunny.UI.UISymbolButton drawRectBtn;
         private Sunny.UI.UISymbolButton drawCircleBtn;
+        private Sunny.UI.UISymbolButton deleteAllDrawBtn;
     }
 }

@@ -22,7 +22,7 @@ namespace A8_TEST
         int PICTURE_WIDTH = 160;//每个缩略图的宽度
         int PICTURE_HEIGHT = 160;//每个缩略图的高度
         int PICTURE_GAP = 0; //图像间隙
-        int PAGEINDEX = 2000;
+        const int PAGEINDEX = 2000;
 
         UserControl1[] userControl1s;
         public static string ImageToShow;
@@ -55,9 +55,9 @@ namespace A8_TEST
                     text = Globals.systemParam.deviceName_2;
                 }
                 TreeNode parent = uiNavMenu1.CreateNode(text, 61451, 24, ++pageIndex);
-
-                // uiNavMenu1.CreateChildNode(parent, "保存图片", 61893, 24, ++pageIndex);
+            
                 uiNavMenu1.CreateChildNode(parent, "报警图片", 61895, 24, ++pageIndex);
+                uiNavMenu1.CreateChildNode(parent, "手动抓图", 61893, 24, ++pageIndex);
                 parent.ExpandAll();
             }
             uiPanel1.MouseWheel += new System.Windows.Forms.MouseEventHandler(this.uiPanel1_MouseWheel);//为uiPanel1添加鼠标滚动事件          
@@ -223,20 +223,33 @@ namespace A8_TEST
             uiScrollBar1.Value = 0;
           
             string directoryPath = Globals.AlarmImageDirectoryPath + 0;
-            if (pageIndex == PAGEINDEX + 2)
+
+            switch (pageIndex)
             {
-                chooseChildNode = true;
-                directoryPath = Globals.AlarmImageDirectoryPath + 0;
+                case PAGEINDEX + 2:
+                    chooseChildNode = true;
+                    directoryPath = Globals.AlarmImageDirectoryPath + 0;
+                    break;
+                case PAGEINDEX + 3:
+                    chooseChildNode = true;
+                    directoryPath = Globals.ImageDirectoryPath + 0;
+                    break;
+                case PAGEINDEX + 5:
+                    chooseChildNode = true;
+                    directoryPath = Globals.AlarmImageDirectoryPath + 1;
+                    break;
+                case PAGEINDEX + 6:
+                    chooseChildNode = true;
+                    directoryPath = Globals.ImageDirectoryPath + 1;
+                    break;
+
             }
-            if (pageIndex == PAGEINDEX + 4)
-            {
-                chooseChildNode = true;
-                directoryPath = Globals.AlarmImageDirectoryPath + 1;
-            }
+
             if (chooseChildNode)
             {
                 DirectoryInfo dirInfo = new DirectoryInfo(directoryPath);
-                Globals.fileInfos = dirInfo.GetFiles("*.bmp");
+                Globals.fileInfos = dirInfo.GetFiles();
+                //Globals.fileInfos = dirInfo.GetFiles("*.*");
                 Globals.SortFolderByCreateTime(ref Globals.fileInfos);
 
                 if (Globals.fileInfos.Length != 0)

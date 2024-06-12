@@ -17,6 +17,7 @@ using System.Net;
 using System.Runtime.InteropServices;
 using OpenCvSharp.Extensions;
 using System.Media;
+using System.Drawing.Imaging;
 
 namespace A8_TEST
 {
@@ -27,6 +28,11 @@ namespace A8_TEST
         const uint DISPLAYWND_MARGIN_LEFT = 1;//监控画面距离左边控件的距离
         const uint DISPLAYWND_MARGIN_TOP = 1; //监控画面距离上边的距离
         const int PAGE_INDEX = 1000;
+        const Int32 IR_VEDIO_WIDTH = 768;//红外图像视频帧宽度
+        const Int32 IR_VEDIO_HEIGHT = 576;//红外图像视频帧高度
+        const Int32 IR_TEMP_WIDTH = 388;//红外温度帧宽度
+        const Int32 IR_TEMP_HEIGHT = 284;//红外温度帧高度
+
         Color PIC_CLICKED_COLOR = Color.FromArgb(128, 128, 255);
         Color PIC_UNCLICKED_COLOR = Color.FromArgb(45, 45, 53);
         private PictureBox[] pics;//显示图像控件
@@ -35,9 +41,10 @@ namespace A8_TEST
         // private UIPanel pixUIPanel;//容纳PictureBox的Panel
         //public static TransparentLabel[] labels;//图像上面标注控件,背景透明
 
-        UISymbolButton startPrewviewBtn, stopPrewviewBtn, startRecordBtn, stopRecordBtn, mouseFollowBtn, takePicBtn, drawRectBtn, drawCircleBtn;
+        UISymbolButton startPrewviewBtn, stopPrewviewBtn, startRecordBtn, stopRecordBtn,
+            mouseFollowBtn, takePicBtn, drawRectBtn, drawCircleBtn, deleteAllDrawBtn;
         private bool isStartPrewview = false;//开始采集标志
-        List<Socket> sockets = new List<Socket>();//连接红外相机socket
+        List<Socket> sockets = new List<Socket>();//连接红外相机获取温度socket
         private delegate string ConnectSocketDelegate(IPEndPoint ipep, Socket sock);
         List<Thread> threadsReceiveTmp = new List<Thread>();//接收温度数据线程
         //private int[,] realTemp;
@@ -49,17 +56,12 @@ namespace A8_TEST
         private List<bool> receiveFlags = new List<bool>();
         private List<bool> socketReceiveFlags = new List<bool>();
 
-        private bool saveVideoFlag = false;//录制视频标志
-        private bool mouseFollowFlag = false;//鼠标跟随标志
+        //private bool mouseFollowFlag = false;//鼠标跟随标志
 
         List<int> picMouseX = new List<int>();//鼠标跟随x坐标
         List<int> picMouseY = new List<int>();//鼠标跟随y坐标
         List<float> tempMouseX = new List<float>();//鼠标跟随对应温度数组x坐标
         List<float> tempMouseY = new List<float>();//鼠标跟随对应温度数组y坐标
-
-        string recordName;//录制视频文件名
-        VideoWriter writer;//存储红外视频对象
-        private bool isInPic;//判断鼠标是否在图像内的标志
 
         #region 红外
         tstRtmp rtmp = new tstRtmp();//利用ffmpeg获取视频数据
@@ -95,17 +97,25 @@ namespace A8_TEST
 
         #endregion
 
+        private List<bool> saveVideoFlags = new List<bool>();
+
+
+        private bool saveVideoFlag = false;//录制视频标志
         private bool saveImageFlag;//保存图像标志
         private bool saveAlarmImageFlag;//保存报警图像标志
         private bool alertFlag;//报警标志
 
-        List<Object> objects = new List<object>();
-
-        List<Bitmap> imageList = new List<Bitmap>();
+        string recordName;//录制视频文件名
+        VideoWriter writer;//存储红外视频对象
+        private bool isInPic;//判断鼠标是否在图像内的标志
 
         string sVideoFileName;
 
         int selectType = -1;
+
+        List<Object> objects = new List<object>();
+
+        List<Bitmap> imageList = new List<Bitmap>();
 
         List<TempRuleInfo> tempRuleInfos = new List<TempRuleInfo>();
         int rectModeIndex = 0;
@@ -120,10 +130,7 @@ namespace A8_TEST
         //public float fSx;//在红外显示控件上画选框，转换成红外视频帧x轴方向的缩放比例
         //public float fSy;//在红外显示控件上画选框，转换成红外视频帧y轴方向的缩放比例
 
-        const Int32 IR_VEDIO_WIDTH = 768;//红外图像视频帧宽度
-        const Int32 IR_VEDIO_HEIGHT = 576;//红外图像视频帧高度
-        const Int32 IR_TEMP_WIDTH = 388;//红外温度帧宽度
-        const Int32 IR_TEMP_HEIGHT = 284;//红外温度帧高度
+
 
 
         public struct TempRuleInfo
@@ -254,14 +261,20 @@ namespace A8_TEST
             //获取Fmoitor界面画矩形按钮，并添加相关事件
             drawRectBtn = (UISymbolButton)fmonitor.GetControl("drawRectBtn");
             drawRectBtn.Click += new EventHandler(drawRectBtn_Click);
-            //drawRectBtn.MouseHover += new EventHandler(drawRectBtn_MouseHover);
-            //drawRectBtn.MouseLeave += new EventHandler(drawRectBtn_MouseLeave);
+            drawRectBtn.MouseHover += new EventHandler(drawRectBtn_MouseHover);
+            drawRectBtn.MouseLeave += new EventHandler(drawRectBtn_MouseLeave);
 
             //获取Fmoitor界面画圆形按钮，并添加相关事件
             drawCircleBtn = (UISymbolButton)fmonitor.GetControl("drawCircleBtn");
             drawCircleBtn.Click += new EventHandler(drawCircleBtn_Click);
-            //drawCircleBtn.MouseHover += new EventHandler(drawCircleBtn_MouseHover);
-            //drawCircleBtn.MouseLeave += new EventHandler(drawCircleBtn_MouseLeave);
+            drawCircleBtn.MouseHover += new EventHandler(drawCircleBtn_MouseHover);
+            drawCircleBtn.MouseLeave += new EventHandler(drawCircleBtn_MouseLeave);
+
+            //获取Fmoitor界面删除所有选区按钮，并添加相关事件
+            deleteAllDrawBtn = (UISymbolButton)fmonitor.GetControl("deleteAllDrawBtn");
+            deleteAllDrawBtn.Click += new EventHandler(deleteAllDrawBtn_Click);
+            deleteAllDrawBtn.MouseHover += new EventHandler(deleteAllDrawBtn_MouseHover);
+            deleteAllDrawBtn.MouseLeave += new EventHandler(deleteAllDrawBtn_MouseLeave);
 
             //为按钮添加提示信息
             uiToolTip1.SetToolTip(startPrewviewBtn, "开始采集");
@@ -270,39 +283,93 @@ namespace A8_TEST
             uiToolTip1.SetToolTip(stopRecordBtn, "停止录制");
             uiToolTip1.SetToolTip(mouseFollowBtn, "鼠标跟随");
             uiToolTip1.SetToolTip(takePicBtn, "手动抓图");
+            uiToolTip1.SetToolTip(drawRectBtn, "矩形测温");
+            uiToolTip1.SetToolTip(drawCircleBtn, "圆形测温");
+            uiToolTip1.SetToolTip(deleteAllDrawBtn, "删除所有选区");
 
-            StartPrewview();
 
+            uiNavBar1.SelectedIndex = 0;
+            //StartPrewview();
+
+        }
+
+        private void deleteAllDrawBtn_MouseLeave(object sender, EventArgs e)
+        {
+            SetButtonImg(deleteAllDrawBtn, "delete.png");
+        }
+
+        private void deleteAllDrawBtn_MouseHover(object sender, EventArgs e)
+        {
+            SetButtonImg(deleteAllDrawBtn, "delete_pressed.png");
+        }
+
+        private void deleteAllDrawBtn_Click(object sender, EventArgs e)
+        {
+            SetButtonImg(deleteAllDrawBtn, "delete.png");
+            //SetButtonImg(drawCircleBtn, "circle.png");
+            //SetButtonImg(drawRectBtn, "square.png");
+            //SetButtonImg(mouseFollowBtn, "鼠标跟随.png");
+            tempRuleInfos.Clear();
         }
 
         private void drawCircleBtn_MouseLeave(object sender, EventArgs e)
         {
-            throw new NotImplementedException();
+            if (selectType != (int)DrawMode.DRAW_CIRCLE)
+            {
+                SetButtonImg(drawCircleBtn, "circle.png");
+            }
         }
 
         private void drawCircleBtn_MouseHover(object sender, EventArgs e)
         {
-            throw new NotImplementedException();
+            SetButtonImg(drawCircleBtn, "circlePressed.png");
         }
 
         private void drawCircleBtn_Click(object sender, EventArgs e)
         {
-            selectType = (int)DrawMode.DRAW_CIRCLE;
+            if (selectType != (int)DrawMode.DRAW_CIRCLE)
+            {
+                selectType = (int)DrawMode.DRAW_CIRCLE;
+                SetButtonImg(drawCircleBtn, "circlePressed.png");
+                SetButtonImg(drawRectBtn, "square.png");
+                SetButtonImg(mouseFollowBtn, "鼠标跟随.png");
+            }
+            else
+            {
+                selectType = -1;
+                SetButtonImg(drawCircleBtn, "circle.png");
+            }
         }
 
         private void drawRectBtn_MouseLeave(object sender, EventArgs e)
         {
-            throw new NotImplementedException();
+            if (selectType != (int)DrawMode.DRAW_AREA)
+            {
+                SetButtonImg(drawRectBtn, "square.png");
+            }
+
         }
 
         private void drawRectBtn_MouseHover(object sender, EventArgs e)
         {
-            throw new NotImplementedException();
+            SetButtonImg(drawRectBtn, "square_pressed.png");
+
         }
 
         private void drawRectBtn_Click(object sender, EventArgs e)
         {
-            selectType = (int)DrawMode.DRAW_AREA;
+            if (selectType != (int)DrawMode.DRAW_AREA)
+            {
+                selectType = (int)DrawMode.DRAW_AREA;
+                SetButtonImg(drawRectBtn, "square_pressed.png");
+                SetButtonImg(mouseFollowBtn, "鼠标跟随.png");
+                SetButtonImg(drawCircleBtn, "circle.png");
+            }
+            else
+            {
+                selectType = -1;
+                SetButtonImg(drawRectBtn, "square.png");
+            }
         }
 
         private void ThreadAlert()
@@ -467,6 +534,8 @@ namespace A8_TEST
                 selectType = 5;
                 //mouseFollowFlag = true;
                 SetButtonImg(mouseFollowBtn, "鼠标跟随1.png");
+                SetButtonImg(drawRectBtn, "square.png");
+                SetButtonImg(drawCircleBtn, "circle.png");
             }
             else
             {
@@ -905,7 +974,6 @@ namespace A8_TEST
         }
 
 
-
         private void StartPrewview()
         {
             isStartPrewview = true;
@@ -941,6 +1009,7 @@ namespace A8_TEST
             PreviewOpDevice(0, RealDataCallBack);
 
             ConnectSocketToReceiveTemp(0);
+
 
             Thread GetTmpThread = new Thread(GetTmp);
             GetTmpThread.IsBackground = true;
@@ -985,8 +1054,6 @@ namespace A8_TEST
 
                         if (tempRuleInfos[i].type == (int)DrawMode.DRAW_CIRCLE)
                         {
-
-
                             int startX = tempRuleInfos[i].startPointX / 2;
                             int startY = tempRuleInfos[i].startPointY / 2;
                             int endX = tempRuleInfos[i].endPointX / 2;
@@ -1288,7 +1355,7 @@ namespace A8_TEST
                                         {
                                             gfx.DrawRectangle(new Pen(Color.LightGreen, 2), tempRuleInfos[k].startPointX, tempRuleInfos[k].startPointY, tempRuleInfos[k].endPointX - tempRuleInfos[k].startPointX, tempRuleInfos[k].endPointY - tempRuleInfos[k].startPointY);
 
-                                            
+
 
                                         }
                                         if (tempRuleInfos[k].type == (int)DrawMode.DRAW_CIRCLE)
@@ -1305,9 +1372,26 @@ namespace A8_TEST
 
                                     if (saveImageFlag)
                                     {
-                                        string IrImagePath = GetIrImageFilePath(Globals.ImageDirectoryPath, 0, "_IR.bmp");
+                                        string IrImagePath = GetIrImageFilePath(Globals.ImageDirectoryPath, 0, "_IR.jpg");
 
-                                        bitmap.Save(IrImagePath, System.Drawing.Imaging.ImageFormat.Bmp);
+                                        byte[] ss = BitmapToByteArray(bitmap);
+
+                                        //Bitmap a = ByteToBitmap(ss);
+                                        //string str = "buffertest.bmp";
+
+                                        using (FileStream fs = new FileStream(IrImagePath, FileMode.Create))
+                                        {
+                                            int iLen = (int)ss.Length;
+                                            fs.Write(ss, 0, iLen);
+                                        }
+                                        //FileStream fs = new FileStream(IrImagePath, FileMode.Create);
+                                        //int iLen = (int)ss.Length;
+                                        //fs.Write(ss, 0, iLen);
+                                        //fs.Close();
+
+                                        //a.Save(IrImagePath, System.Drawing.Imaging.ImageFormat.Bmp);
+
+                                       // bitmap.Save(IrImagePath, System.Drawing.Imaging.ImageFormat.bmp);
 
                                         SaveOpImage(0, Globals.ImageDirectoryPath, mRealHandles[0], 1);
                                         saveImageFlag = false;
@@ -1750,10 +1834,10 @@ namespace A8_TEST
                 // 更新图片显示
                 tstRtmp.ShowBitmap show = (bmp) =>
                 {
-                    //Console.WriteLine(DateTime.Now);
+                    Console.WriteLine(DateTime.Now);
                     // pics[0].Image = bmp;
                     if (bmp != null)
-                    {
+                    {                        
                         irImageLists[0].Add((Bitmap)bmp.Clone());
                     }
                     else
@@ -1831,18 +1915,18 @@ namespace A8_TEST
 
                     }
 
-                    if (thPlayer != null)
-                    {
-                        rtmp.Stop();
-
-                        thPlayer = null;
-                    }
-
-                    CHCNetSDK.NET_DVR_Cleanup();
-
-                    Globals.fileInfos = null;
-
                 }
+
+                if (thPlayer != null)
+                {
+                    rtmp.Stop();
+
+                    thPlayer = null;
+                }
+
+                CHCNetSDK.NET_DVR_Cleanup();
+
+                Globals.fileInfos = null;
             }
             catch (Exception ex)
             {
@@ -1984,7 +2068,8 @@ namespace A8_TEST
             Timing();
 
             DirectoryInfo dirInfo = new DirectoryInfo(Globals.AlarmImageDirectoryPath + 0);
-            Globals.fileInfos = dirInfo.GetFiles("*.bmp");
+            //Globals.fileInfos = dirInfo.GetFiles("*.bmp");
+            Globals.fileInfos = dirInfo.GetFiles();
             Globals.SortFolderByCreateTime(ref Globals.fileInfos);
             //Console.WriteLine("FormBrowse_Load" + Globals.fileInfos[0].Name);
 
@@ -1999,6 +2084,15 @@ namespace A8_TEST
         {
             //mouseFollowFlag = false;
             isInPic = false;
+        }
+
+        private void UiButton1_Click(object sender, EventArgs e)
+        {
+            using (System.Diagnostics.Process process = new System.Diagnostics.Process())
+            {
+                process.StartInfo.FileName = Application.StartupPath + "\\" + "ffmpeg.exe";
+                process.StartInfo.Arguments = "-i";
+            }
         }
 
         private void Pics0_MouseUp(object sender, MouseEventArgs e)
@@ -2122,9 +2216,13 @@ namespace A8_TEST
         {
             //uint w = (uint)(Screen.PrimaryScreen.Bounds.Width - fmonitor.GetControl("uiPanel1").Width);
             //uint w = (uint)(Screen.PrimaryScreen.Bounds.Width - fmonitor.GetControl("uiNavMenu1").Width);
-            
+
+            //uint w = (uint)(this.ClientSize.Width);
+
+            //uint h = (uint)(this.ClientSize.Height - uiNavBar1.Height - fmonitor.GetControl("uiPanel1").Height);
+
             uint w = (uint)(Screen.PrimaryScreen.Bounds.Width);
-            
+
             uint h = (uint)(Screen.PrimaryScreen.Bounds.Height - uiNavBar1.Height - fmonitor.GetControl("uiPanel1").Height);
 
 
@@ -2232,102 +2330,106 @@ namespace A8_TEST
 
         private void Pics0_MouseClick(object sender, MouseEventArgs e)
         {
-
-            int iX = e.X * 768 / pics[0].Width;
-            int iY = e.Y * 576 / pics[0].Height;
-
-            mouseDownPoint.x = iX;
-            mouseDownPoint.y = iY;
-
-            iNowPaint_X_End = 0;
-            iNowPaint_Y_End = 0;
-
-            if (e.Button == MouseButtons.Left)
+            if (selectType != -1)
             {
-                if (iTempType == 2)//画矩形或画圆形
+
+
+                int iX = e.X * 768 / pics[0].Width;
+                int iY = e.Y * 576 / pics[0].Height;
+
+                mouseDownPoint.x = iX;
+                mouseDownPoint.y = iY;
+
+                iNowPaint_X_End = 0;
+                iNowPaint_Y_End = 0;
+
+                if (e.Button == MouseButtons.Left)
                 {
+                    if (iTempType == 2)//画矩形或画圆形
+                    {
+                        idraw = false;
+                        iNowPaint_X_Start = iX;
+                        iNowPaint_Y_Start = iY;
+
+                        points.Add(mouseDownPoint);
+
+                        iTempType = 3;
+                    }
+
+                }
+                else if (e.Button == MouseButtons.Right)
+                {
+                    iTempType = 2;
                     idraw = false;
-                    iNowPaint_X_Start = iX;
-                    iNowPaint_Y_Start = iY;
+                    switch (selectType)
+                    {
+                        case (int)DrawMode.DRAW_POINT:
+                        case (int)DrawMode.DRAW_LINE:
+                        case (int)DrawMode.DRAW_AREA:
+                        case (int)DrawMode.DRAW_CIRCLE:
 
-                    points.Add(mouseDownPoint);
+                            if (2 == points.Count)
+                            {
 
-                    iTempType = 3;
+                                TempRuleInfo tempRuleInfo = new TempRuleInfo();
+                                tempRuleInfo.type = selectType;
+                                tempRuleInfo.index = rectModeIndex;
+                                tempRuleInfo.startPointX = points[0].x;
+                                tempRuleInfo.startPointY = points[0].y;
+                                tempRuleInfo.endPointX = points[1].x;
+                                tempRuleInfo.endPointY = points[1].y;
+
+                                //tempRuleInfos[rectModeIndex] = tempRuleInfo;
+                                tempRuleInfos.Add(tempRuleInfo);
+
+                                //a8sdk.A8SDK.area_pos area_data;
+
+                                //area_data.enable = 1;
+                                //area_data.height = points[1].y- points[0].y;
+                                //area_data.width = points[1].x- points[0].x;
+                                //area_data.x = points[0].x;
+                                //area_data.y = points[0].y;
+                                //int i = a8Lists[0].Set_area_pos(0, area_data);
+                                //Console.WriteLine("执行结果" + i);
+
+                                points.Clear();
+
+                                //int i;
+                                //a8sdk.A8SDK.area_pos area_data;
+
+                                //Console.WriteLine(" tempRuleInfos[0].startPointX" + tempRuleInfos[0].startPointX);
+                                //Console.WriteLine("tempRuleInfos[0].startPointY " + tempRuleInfos[0].startPointY);
+                                //Console.WriteLine("tempRuleInfos[0].endPointX" + tempRuleInfos[0].endPointX);
+                                //Console.WriteLine("tempRuleInfos[0].endPointY" + tempRuleInfos[0].endPointY);
+
+
+                                //int x1 = tempRuleInfos[0].startPointX / 4;
+                                //int y1 = tempRuleInfos[0].startPointY / 4;
+
+                                //int x2 = tempRuleInfos[0].endPointX / 4;
+                                //int y2 = tempRuleInfos[0].endPointY / 4;
+
+                                //Console.WriteLine("x1" + x1);
+                                //Console.WriteLine("y1" + y1);
+                                //Console.WriteLine("x2" + x2);
+                                //Console.WriteLine("y2" + y2);
+
+                                //area_data.enable = 1;
+                                //area_data.height = y2-y1;
+                                //area_data.width = x2-x1;
+                                //area_data.x = x1;
+                                //area_data.y = y1;
+                                //i = a8Lists[0].Set_area_pos(1, area_data);
+
+
+                                //rectModeIndex++;
+
+                            }
+                            break;
+                    }
                 }
 
             }
-            else if (e.Button == MouseButtons.Right)
-            {
-                iTempType = 2;
-                idraw = false;
-                switch (selectType)
-                {
-                    case (int)DrawMode.DRAW_POINT:
-                    case (int)DrawMode.DRAW_LINE:
-                    case (int)DrawMode.DRAW_AREA:
-                    case (int)DrawMode.DRAW_CIRCLE:
-
-                        if (2 == points.Count)
-                        {
-
-                            TempRuleInfo tempRuleInfo = new TempRuleInfo();
-                            tempRuleInfo.type = selectType;
-                            tempRuleInfo.index = rectModeIndex;
-                            tempRuleInfo.startPointX = points[0].x;
-                            tempRuleInfo.startPointY = points[0].y;
-                            tempRuleInfo.endPointX = points[1].x;
-                            tempRuleInfo.endPointY = points[1].y;
-
-                            //tempRuleInfos[rectModeIndex] = tempRuleInfo;
-                            tempRuleInfos.Add(tempRuleInfo);
-
-                            //a8sdk.A8SDK.area_pos area_data;
-
-                            //area_data.enable = 1;
-                            //area_data.height = points[1].y- points[0].y;
-                            //area_data.width = points[1].x- points[0].x;
-                            //area_data.x = points[0].x;
-                            //area_data.y = points[0].y;
-                            //int i = a8Lists[0].Set_area_pos(0, area_data);
-                            //Console.WriteLine("执行结果" + i);
-
-                            points.Clear();
-
-                            //int i;
-                            //a8sdk.A8SDK.area_pos area_data;
-
-                            //Console.WriteLine(" tempRuleInfos[0].startPointX" + tempRuleInfos[0].startPointX);
-                            //Console.WriteLine("tempRuleInfos[0].startPointY " + tempRuleInfos[0].startPointY);
-                            //Console.WriteLine("tempRuleInfos[0].endPointX" + tempRuleInfos[0].endPointX);
-                            //Console.WriteLine("tempRuleInfos[0].endPointY" + tempRuleInfos[0].endPointY);
-
-
-                            //int x1 = tempRuleInfos[0].startPointX / 4;
-                            //int y1 = tempRuleInfos[0].startPointY / 4;
-
-                            //int x2 = tempRuleInfos[0].endPointX / 4;
-                            //int y2 = tempRuleInfos[0].endPointY / 4;
-
-                            //Console.WriteLine("x1" + x1);
-                            //Console.WriteLine("y1" + y1);
-                            //Console.WriteLine("x2" + x2);
-                            //Console.WriteLine("y2" + y2);
-
-                            //area_data.enable = 1;
-                            //area_data.height = y2-y1;
-                            //area_data.width = x2-x1;
-                            //area_data.x = x1;
-                            //area_data.y = y1;
-                            //i = a8Lists[0].Set_area_pos(1, area_data);
-
-
-                            //rectModeIndex++;
-
-                        }
-                        break;
-                }
-            }
-
         }
 
         public int[] getTempAtRect(int[,] realTemp, int X1, int Y1, int X2, int Y2)
@@ -2384,14 +2486,14 @@ namespace A8_TEST
                         if (x >= 0 && x < imageData.GetLength(0) && y >= 0 && y < imageData.GetLength(1))
                         {
                             int currentValue = imageData[x, y];
-                            if(currentValue >result[0])
+                            if (currentValue > result[0])
                             {
                                 result[0] = currentValue;
                                 result[1] = x;
                                 result[2] = y;
                             }
-                           // result[0] = Math.Max(result[0], currentValue);
-                            
+                            // result[0] = Math.Max(result[0], currentValue);
+
                         }
                     }
                 }
@@ -2417,5 +2519,61 @@ namespace A8_TEST
         {
 
         }
+
+        private byte[] BitmapToBytes(Bitmap bitmap)
+        {
+            // 1.先将BitMap转成内存流
+            MemoryStream ms = new MemoryStream();
+            bitmap.Save(ms, ImageFormat.Bmp);
+            ms.Seek(0, SeekOrigin.Begin);
+            // 2.再将内存流转成byte[]并返回
+            byte[] bytes = new byte[ms.Length];
+            ms.Read(bytes, 0, bytes.Length);
+            ms.Dispose();
+            return bytes;
+        }
+        public Bitmap ByteToBitmap(byte[] ImageByte)
+        {
+            Bitmap bitmap = null; using (MemoryStream stream = new MemoryStream(ImageByte))
+            {
+                bitmap = new Bitmap((Image)new Bitmap(stream));
+            }
+            return bitmap;
+        }
+
+        // Bitmap转换为byte数组
+        public static byte[] BitmapToByteArray(Bitmap bitmap)
+        {
+            //int w = bmp.Width;
+            //int h = bmp.Height;
+            //Rectangle rect = new Rectangle(0, 0, w, h);
+            //BitmapData bmpData = bmp.LockBits(rect, ImageLockMode.ReadOnly, bmp.PixelFormat);
+            //// 获取图像数据的地址
+            //IntPtr ptr = bmpData.Scan0;
+            //// 创建字节数组
+            //int bytes = Math.Abs(bmpData.Stride) * h;
+            //byte[] rgbValues = new byte[bytes];
+            //// 拷贝到字节数组
+            //Marshal.Copy(ptr, rgbValues, 0, bytes);
+            //bmp.UnlockBits(bmpData);
+            //return rgbValues;
+
+
+            using (MemoryStream stream = new MemoryStream())
+            {
+                bitmap.Save(stream, ImageFormat.Bmp);
+                return stream.ToArray();
+            }
+        }
+
+        // byte数组转换为Bitmap
+        public static Bitmap ByteArrayToBitmap(byte[] byteArray)
+        {
+            using (MemoryStream stream = new MemoryStream(byteArray))
+            {
+                return new Bitmap(stream);
+            }
+        }
+
     }
 }
